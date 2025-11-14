@@ -36,14 +36,102 @@
             font-family: monospace;
             white-space: pre-wrap;
             overflow-x: auto;
+            min-height: 100px; /* Added min-height */
         }
+        
+        /* NEW: Styles for the chat window */
+        .chat-window {
+            background-color: #1a202c; /* bg-gray-900 */
+            border: 1px solid #4a5568; /* border-gray-600 */
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 1rem;
+            overflow-y: auto;
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .chat-message {
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            max-width: 80%;
+            white-space: pre-wrap; /* Kept for newlines */
+            line-height: 1.6;
+            word-wrap: break-word; /* Added */
+        }
+        .user-message {
+            background-color: #2d3748; /* bg-gray-700 */
+            align-self: flex-end;
+            color: #e2e8f0; /* text-gray-200 */
+        }
+        .model-message {
+            background-color: #3f4a5f; /* bg-gray-600 */
+            align-self: flex-start;
+            color: #e2e8f0; /* text-gray-200 */
+        }
+        .user-message img {
+            max-width: 200px;
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        /* NEW: Styling for rendered markdown */
+        .chat-message ul, .chat-message ol {
+            margin-left: 1.5rem;
+            margin-top: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .chat-message ul {
+            list-style-type: disc;
+        }
+        .chat-message ol {
+            list-style-type: decimal;
+        }
+        .chat-message li {
+            margin-bottom: 0.25rem;
+        }
+        .chat-message strong {
+            color: #fff;
+            font-weight: 600;
+        }
+        .chat-message em {
+            font-style: italic;
+        }
+        .chat-message code {
+            background-color: #1a202c;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .chat-message pre {
+            background-color: #1a202c;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .chat-message pre code {
+            padding: 0;
+            background-color: transparent;
+        }
+        
+        #image-preview-container img {
+            max-width: 150px;
+            max-height: 150px;
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+            border: 1px solid #4a5568;
+        }
+        
         /* Ensure canvas is responsive */
         .chart-container {
             position: relative;
             height: 400px;
             width: 100%;
         }
-        #three-canvas {
+        #three-canvas, #three-grapher-canvas { /* Added new canvas */
             width: 100%;
             height: 400px;
             border-radius: 0.5rem;
@@ -74,6 +162,23 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        /* Button style for AI explainers */
+        .ai-explain-btn {
+            background-color: #7c3aed; /* purple-600 */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            margin-top: 1rem;
+            border: none;
+            width: 100%;
+            font-size: 0.875rem;
+        }
+        .ai-explain-btn:hover {
+            background-color: #6d28d9; /* purple-700 */
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 min-h-screen">
@@ -90,6 +195,8 @@
                     <button data-module="algebra" class="nav-btn bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium">Algebra Solver</button>
                     <button data-module="calculus" class="nav-btn text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Calculus Lab</button>
                     <button data-module="trig" class="nav-btn text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Trig Hub</button>
+                    <!-- NEW 3D Grapher Button -->
+                    <button data-module="3d-grapher" class="nav-btn text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">3D Grapher</button>
                     <button data-module="ai-tutor" class="nav-btn text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">AI Math Tutor</button>
                 </div>
                 <!-- Mobile menu button (simple) -->
@@ -98,6 +205,8 @@
                         <option value="algebra">Algebra Solver</option>
                         <option value="calculus">Calculus Lab</option>
                         <option value="trig">Trig Hub</option>
+                        <!-- NEW 3D Grapher Option -->
+                        <option value="3d-grapher">3D Grapher</option>
                         <option value="ai-tutor">AI Math Tutor</option>
                     </select>
                 </div>
@@ -112,92 +221,195 @@
         <!-- MODULE 1: ALGEBRA SOLVER -->
         <!-- =================================================================== -->
         <div id="algebra-module" class="module-content">
-            <h1 class="text-3xl font-bold mb-6 text-white">Algebra: System of Equations Solver</h1>
+            <h1 class="text-3xl font-bold mb-6 text-white">Algebra Solver</h1>
             
-            <!-- Controls -->
-            <div class="bg-gray-800 p-6 rounded-lg shadow-xl mb-6">
-                <div class="flex items-center space-x-4 mb-4">
-                    <label class="text-lg font-medium">Select Variables:</label>
-                    <button id="btn-2-vars" class="px-4 py-2 rounded-md bg-blue-600 text-white font-semibold">2 Variables</button>
-                    <button id="btn-3-vars" class="px-4 py-2 rounded-md bg-gray-600 text-white font-semibold">3 Variables</button>
+            <!-- Tabs -->
+            <div class="mb-4 border-b border-gray-700">
+                <nav class="flex space-x-4" aria-label="Tabs">
+                    <button class="algebra-tab-btn" data-tab="algebra-system-solver" role="tab">System Solver</button>
+                    <button class="algebra-tab-btn" data-tab="algebra-polynomial-roots" role="tab">Polynomial Roots</button>
+                    <button class="algebra-tab-btn" data-tab="algebra-matrix-calc" role="tab">Matrix Calculator</button>
+                </nav>
+            </div>
+
+            <!-- Tab Content: System Solver -->
+            <div id="algebra-system-solver" class="algebra-tab-content">
+                <!-- Controls -->
+                <div class="bg-gray-800 p-6 rounded-lg shadow-xl mb-6">
+                    <div class="flex items-center space-x-4 mb-4">
+                        <label class="text-lg font-medium">Select Variables:</label>
+                        <button id="btn-2-vars" class="px-4 py-2 rounded-md bg-blue-600 text-white font-semibold">2 Variables</button>
+                        <button id="btn-3-vars" class="px-4 py-2 rounded-md bg-gray-600 text-white font-semibold">3 Variables</button>
+                    </div>
+                    
+                    <!-- 2-Variable Inputs -->
+                    <div id="inputs-2-vars" class="space-y-3">
+                        <!-- FIX: $...$ to \(...\) -->
+                        <p class="text-gray-400">Enter coefficients for: \(a_1x + b_1y = d_1\) and \(a_2x + b_2y = d_2\)</p>
+                        <div class="grid grid-cols-3 gap-4">
+                            <input id="a1" type="number" placeholder="a1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="2">
+                            <input id="b1" type="number" placeholder="b1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
+                            <input id="d1" type="number" placeholder="d1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="5">
+                        </div>
+                        <div class="grid grid-cols-3 gap-4">
+                            <input id="a2" type="number" placeholder="a2" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
+                            <input id="b2" type="number" placeholder="b2" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="-1">
+                            <input id="d2" type="number" placeholder="d2" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
+                        </div>
+                    </div>
+
+                    <!-- 3-Variable Inputs -->
+                    <div id="inputs-3-vars" class="space-y-3 hidden">
+                        <!-- FIX: $...$ to \(...\) -->
+                        <p class="text-gray-400">Enter coefficients for: \(ax + by + cz = d\)</p>
+                        <div class="grid grid-cols-4 gap-4">
+                            <input id="a3" type="number" placeholder="a1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
+                            <input id="b3" type="number" placeholder="b1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
+                            <input id="c3" type="number" placeholder="c1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="2">
+                            <input id="d3" type="number" placeholder="d1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="9">
+                        </div>
+                        <div class="grid grid-cols-4 gap-4">
+                            <input id="a4" type="number" placeholder="a2" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="2">
+                            <input id="b4" type="number" placeholder="b2" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="4">
+                            <input id="c4" type="number" placeholder="c2" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="-3">
+                            <input id="d4" type="number" placeholder="d2" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
+                        </div>
+                        <div class="grid grid-cols-4 gap-4">
+                            <input id="a5" type="number" placeholder="a3" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="3">
+                            <input id="b5" type="number" placeholder="b3" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="6">
+                            <input id="c5" type="number" placeholder="c3" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="-5">
+                            <input id="d5" type="number" placeholder="d3" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="0">
+                        </div>
+                    </div>
+
+                    <button id="solve-algebra" class="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200">
+                        Solve and Visualize
+                    </button>
                 </div>
                 
-                <!-- 2-Variable Inputs -->
-                <div id="inputs-2-vars" class="space-y-3">
-                    <p class="text-gray-400">Enter coefficients for: $a_1x + b_1y = d_1$ and $a_2x + b_2y = d_2$</p>
-                    <div class="grid grid-cols-3 gap-4">
-                        <input id="a1" type="number" placeholder="a1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="2">
-                        <input id="b1" type="number" placeholder="b1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
-                        <input id="d1" type="number" placeholder="d1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="5">
+                <!-- Visualization and Solution -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Visualization -->
+                    <div class="bg-gray-800 p-4 rounded-lg shadow-xl">
+                        <h2 class="text-2xl font-bold mb-4 text-white">Visualization</h2>
+                        <!-- 2D Canvas -->
+                        <div id="chart-2d-container" class="chart-container">
+                            <canvas id="algebra-chart-2d"></canvas>
+                        </div>
+                        <!-- 3D Canvas -->
+                        <div id="chart-3d-container" class="hidden">
+                            <div id="three-canvas"></div>
+                            <p class="text-center text-gray-400 mt-2">Click and drag to rotate. Scroll to zoom.</p>
+                        </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-4">
-                        <input id="a2" type="number" placeholder="a2" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
-                        <input id="b2" type="number" placeholder="b2" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="-1">
-                        <input id="d2" type="number" placeholder="d2" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
-                    </div>
-                </div>
-
-                <!-- 3-Variable Inputs -->
-                <div id="inputs-3-vars" class="space-y-3 hidden">
-                    <p class="text-gray-400">Enter coefficients for: $ax + by + cz = d$</p>
-                    <div class="grid grid-cols-4 gap-4">
-                        <input id="a3" type="number" placeholder="a1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
-                        <input id="b3" type="number" placeholder="b1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
-                        <input id="c3" type="number" placeholder="c1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="2">
-                        <input id="d3" type="number" placeholder="d1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="9">
-                    </div>
-                    <div class="grid grid-cols-4 gap-4">
-                        <input id="a4" type="number" placeholder="a2" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="2">
-                        <input id="b4" type="number" placeholder="b2" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="4">
-                        <input id="c4" type="number" placeholder="c2" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="-3">
-                        <input id="d4" type="number" placeholder="d2" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
-                    </div>
-                    <div class="grid grid-cols-4 gap-4">
-                        <input id="a5" type="number" placeholder="a3" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="3">
-                        <input id="b5" type="number" placeholder="b3" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="6">
-                        <input id="c5" type="number" placeholder="c3" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="-5">
-                        <input id="d5" type="number" placeholder="d3" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="0">
+                    <!-- Solution and Steps -->
+                    <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
+                        <h2 class="text-2xl font-bold mb-4 text-white">Solution & Steps</h2>
+                        <div id="algebra-solution" class="text-xl font-bold text-green-400 mb-4"></div>
+                        <div id="algebra-steps" class="steps-output text-gray-300">Enter coefficients and click solve.</div>
+                        <!-- NEW AI Explain Button -->
+                        <button id="explain-algebra-btn" class="ai-explain-btn hidden">🤖 Explain this solution method</button>
                     </div>
                 </div>
-
-                <button id="solve-algebra" class="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200">
-                    Solve and Visualize
-                </button>
             </div>
-            
-            <!-- Visualization and Solution -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Visualization -->
-                <div class="bg-gray-800 p-4 rounded-lg shadow-xl">
-                    <h2 class="text-2xl font-bold mb-4 text-white">Visualization</h2>
-                    <!-- 2D Canvas -->
-                    <div id="chart-2d-container" class="chart-container">
-                        <canvas id="algebra-chart-2d"></canvas>
+
+            <!-- Tab Content: Polynomial Roots -->
+            <div id="algebra-polynomial-roots" class="algebra-tab-content hidden">
+                <div class="bg-gray-800 p-6 rounded-lg shadow-xl mb-6">
+                    <!-- FIX: $...$ to \(...\) -->
+                    <p class="text-gray-400 mb-4">Find roots for: \(ax^3 + bx^2 + cx + d = 0\)</p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <input id="poly-a" type="number" placeholder="a (x³)" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
+                        <input id="poly-b" type="number" placeholder="b (x²)" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="0">
+                        <input id="poly-c" type="number" placeholder="c (x)" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="-4">
+                        <input id="poly-d" type="number" placeholder="d" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="0">
                     </div>
-                    <!-- 3D Canvas -->
-                    <div id="chart-3d-container" class="hidden">
-                        <div id="three-canvas"></div>
-                        <p class="text-center text-gray-400 mt-2">Click and drag to rotate the 3D planes.</p>
+                    <button id="solve-poly" class="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200">
+                        Find Roots and Graph
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-gray-800 p-4 rounded-lg shadow-xl">
+                        <h2 class="text-2xl font-bold mb-4 text-white">Polynomial Graph</h2>
+                        <div class="chart-container">
+                            <canvas id="poly-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
+                        <h2 class="text-2xl font-bold mb-4 text-white">Roots</h2>
+                        <div id="poly-solution" class="text-lg font-bold text-green-400 mb-4"></div>
+                        <div id="poly-steps" class="steps-output text-gray-300">Enter coefficients to find roots.</div>
                     </div>
                 </div>
-                <!-- Solution and Steps -->
-                <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
-                    <h2 class="text-2xl font-bold mb-4 text-white">Solution & Steps</h2>
-                    <div id="algebra-solution" class="text-xl font-bold text-green-400 mb-4"></div>
-                    <div id="algebra-steps" class="steps-output text-gray-300">Enter coefficients and click solve.</div>
+            </div>
+
+            <!-- Tab Content: Matrix Calculator -->
+            <div id="algebra-matrix-calc" class="algebra-tab-content hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Inputs -->
+                    <div class="bg-gray-800 p-6 rounded-lg shadow-xl space-y-4">
+                        <h2 class="text-2xl font-bold text-white">Matrix A</h2>
+                        <div class="grid grid-cols-3 gap-2">
+                            <input id="A-00" type="number" value="1" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="A-01" type="number" value="2" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="A-02" type="number" value="3" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="A-10" type="number" value="4" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="A-11" type="number" value="5" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="A-12" type="number" value="6" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="A-20" type="number" value="7" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="A-21" type="number" value="8" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="A-22" type="number" value="9" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                        </div>
+                        <h2 class="text-2xl font-bold text-white">Matrix B</h2>
+                        <div class="grid grid-cols-3 gap-2">
+                            <input id="B-00" type="number" value="9" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="B-01" type="number" value="8" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="B-02" type="number" value="7" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="B-10" type="number" value="6" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="B-11" type="number" value="5" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="B-12" type="number" value="4" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="B-20" type="number" value="3" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="B-21" type="number" value="2" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <input id="B-22" type="number" value="1" class="p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                        </div>
+                    </div>
+                    <!-- Operations & Result -->
+                    <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
+                        <h2 class="text-2xl font-bold text-white">Operations</h2>
+                        <div class="grid grid-cols-3 gap-4 my-4">
+                            <button class="matrix-op-btn" data-op="add">A + B</button>
+                            <button class="matrix-op-btn" data-op="subtract">A - B</button>
+                            <button class="matrix-op-btn" data-op="multiply">A * B</button>
+                            <button class="matrix-op-btn" data-op="detA">det(A)</button>
+                            <button class="matrix-op-btn" data-op="invA">inv(A)</button>
+                            <button class="matrix-op-btn" data-op="adjA">adj(A)</button>
+                            <button class="matrix-op-btn" data-op="detB">det(B)</button>
+                            <button class="matrix-op-btn" data-op="invB">inv(B)</button>
+                            <button class="matrix-op-btn" data-op="adjB">adj(B)</button>
+                        </div>
+                        <h2 class="text-2xl font-bold text-white mt-6">Result</h2>
+                        <div id="matrix-result-scalar" class="text-xl font-bold text-green-400 my-2"></div>
+                        <div id="matrix-result-grid" class="grid grid-cols-3 gap-2 mt-4 hidden">
+                            <div class="matrix-result-cell"></div><div class="matrix-result-cell"></div><div class="matrix-result-cell"></div>
+                            <div class="matrix-result-cell"></div><div class="matrix-result-cell"></div><div class="matrix-result-cell"></div>
+                            <div class="matrix-result-cell"></div><div class="matrix-result-cell"></div><div class="matrix-result-cell"></div>
+                        </div>
+                        <div id="matrix-error" class="text-red-400 mt-2"></div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- =================================================================== -->
-        <!-- MODULE 2: CALCULUS LAB (Restored) -->
+        <!-- MODULE 2: CALCULUS LAB -->
         <!-- =================================================================== -->
         <div id="calculus-module" class="module-content hidden">
             <h1 class="text-3xl font-bold mb-6 text-white">Calculus Lab</h1>
 
             <!-- Input -->
             <div class="bg-gray-800 p-6 rounded-lg shadow-xl mb-6">
-                <label for="calc-function" class="block text-lg font-medium mb-2">Enter function $f(x)$:</label>
+                <!-- FIX: $...$ to \(...\) -->
+                <label for="calc-function" class="block text-lg font-medium mb-2">Enter function \(f(x)\):</label>
                 <input id="calc-function" type="text" placeholder="e.g., x^2, sin(x), x^3 - 2*x" class="w-full p-3 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg" value="x^2">
                 <button id="calc-update-all" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200">
                     Run All
@@ -231,12 +443,16 @@
                     <h2 class="text-2xl font-bold mb-4 text-white">Symbolic Derivative</h2>
                     <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
                         <div class="steps-output">
-                            <span class="text-gray-400">$f(x) = $</span>
+                            <!-- FIX: $...$ to \(...\) -->
+                            <span class="text-gray-400">\(f(x) = \)</span>
                             <span id="deriv-fx" class="text-white"></span>
                             <br><br>
-                            <span class="text-gray-400">$f'(x) = \frac{d}{dx}[f(x)] = $</span>
+                            <!-- FIX: $...$ to \(...\) -->
+                            <span class="text-gray-400">\(f'(x) = \frac{d}{dx}[f(x)] = \)</span>
                             <span id="deriv-fpx" class="text-xl text-green-400"></span>
                         </div>
+                        <!-- NEW AI Explain Button -->
+                        <button id="explain-derivative-btn" class="ai-explain-btn">🤖 Explain this derivative</button>
                     </div>
                 </div>
 
@@ -273,9 +489,11 @@
                     <h2 class="text-2xl font-bold mb-4 text-white">Limit Explorer</h2>
                     <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
                         <div class="flex items-center space-x-2 mb-4">
-                            <span class="text-lg">$\lim_{x \to}$</span>
+                            <!-- FIX: $...$ to \(...\) -->
+                            <span class="text-lg">\(\lim_{x \to}\)</span>
                             <input id="limit-a" type="number" value="0" class="w-24 p-2 rounded bg-gray-700 text-white border border-gray-600">
-                            <span id="limit-fx" class="text-lg ml-2">$f(x)$</span>
+                            <!-- FIX: $...$ to \(...\) -->
+                            <span id="limit-fx" class="text-lg ml-2">\(f(x)\)</span>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <table class="w-full text-left table-auto">
@@ -312,7 +530,7 @@
         </div>
 
         <!-- =================================================================== -->
-        <!-- MODULE 3: TRIG HUB (Restored) -->
+        <!-- MODULE 3: TRIG HUB -->
         <!-- =================================================================== -->
         <div id="trig-module" class="module-content hidden">
             <h1 class="text-3xl font-bold mb-6 text-white">Trigonometry Hub</h1>
@@ -434,28 +652,77 @@
                         <h2 class="text-2xl font-bold mb-4 text-white">Results & Steps</h2>
                         <div id="triangle-solution" class="text-lg font-bold text-green-400 mb-4"></div>
                         <div id="triangle-steps" class="steps-output text-gray-300">Enter 3 values to solve.</div>
+                        <!-- NEW AI Explain Button -->
+                        <button id="explain-trig-btn" class="ai-explain-btn hidden">🤖 Explain this solution method</button>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- =================================================================== -->
-        <!-- MODULE 4: AI MATH TUTOR (NEW) -->
+        <!-- NEW MODULE 4: 3D FUNCTION GRAPHER -->
+        <!-- =================================================================== -->
+        <div id="3d-grapher-module" class="module-content hidden">
+            <h1 class="text-3xl font-bold mb-6 text-white">3D Function Grapher</h1>
+            
+            <!-- Input -->
+            <div class="bg-gray-800 p-6 rounded-lg shadow-xl mb-6">
+                <!-- FIX: $...$ to \(...\) -->
+                <label for="3d-function" class="block text-lg font-medium mb-2">Enter function \(z = f(x, y)\):</label>
+                <input id="3d-function" type="text" placeholder="e.g., sin(x) + cos(y), x^2 - y^2" class="w-full p-3 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg" value="sin(sqrt(x^2 + y^2))">
+                <button id="graph-3d-btn" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200">
+                    Graph Function
+                </button>
+            </div>
+            
+            <!-- Visualization -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-xl">
+                <h2 class="text-2xl font-bold mb-4 text-white">Visualization</h2>
+                <div id="three-grapher-canvas"></div>
+                <p class="text-center text-gray-400 mt-2">Click and drag to rotate. Scroll to zoom.</p>
+                <div id="graph-3d-error" class="text-red-400 mt-2 text-center"></div>
+            </div>
+        </div>
+
+
+        <!-- =================================================================== -->
+        <!-- MODULE 5: AI MATH TUTOR -->
         <!-- =================================================================== -->
         <div id="ai-tutor-module" class="module-content hidden">
-            <h1 class="text-3xl font-bold mb-6 text-white">AI Math Tutor (powered by Gemini)</h1>
+            <!-- UPDATED: Removed (powered by Gemini) -->
+            <h1 class="text-3xl font-bold mb-6 text-white">AI Math Tutor</h1>
             <div class="bg-gray-800 p-6 rounded-lg shadow-xl mb-6">
                 <label for="ai-problem-input" class="block text-lg font-medium mb-2">Enter any math problem:</label>
                 <textarea id="ai-problem-input" rows="4" class="w-full p-3 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg" placeholder="e.g., Solve 3x^2 - 4x + 1 = 0, or 'what is the derivative of sin(x^2)?'"></textarea>
+                
+                <!-- NEW: Image Upload and Chat Controls -->
+                <div class="mt-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div>
+                        <label for="ai-image-upload" class="cursor-pointer text-blue-400 hover:text-blue-300">
+                            Upload Image (optional)
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                        </label>
+                        <input type="file" id="ai-image-upload" class="hidden" accept="image/*">
+                        <div id="image-preview-container" class="mt-2"></div>
+                    </div>
+                    <button id="ai-clear-btn" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition duration-200">
+                        Clear Chat
+                    </button>
+                </div>
+                
                 <button id="ai-solve-btn" class="mt-4 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200">
-                    Ask Gemini
+                    <!-- UPDATED: Changed "Ask Gemini" to "Ask AI" -->
+                    Ask AI
                 </button>
             </div>
 
             <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
-                <h2 class="text-2xl font-bold mb-4 text-white">Step-by-Step Solution</h2>
+                <h2 class="text-2xl font-bold mb-4 text-white">Chat</h2>
                 <div id="ai-loader" class="loader hidden"></div>
-                <div id="ai-solution" class="steps-output text-gray-300 text-lg leading-relaxed">Your step-by-step solution will appear here.</div>
+                <!-- UPDATED: Changed from steps-output to chat-window -->
+                <div id="ai-solution" class="chat-window text-gray-300 text-lg leading-relaxed"></div>
             </div>
         </div>
 
@@ -469,11 +736,18 @@
 
             // --- Global State & Charts ---
             let algebraChart2D = null;
+            let polynomialChart = null;
             let calcChart = null;
             let integralChart = null;
             let trigChart = null;
+            
+            // 3D Algebra
             let threeScene, threeCamera, threeRenderer, threeGroup;
+            // NEW: 3D Grapher
+            let grapherScene, grapherCamera, grapherRenderer, grapherMesh;
+
             let currentModule = 'algebra';
+            let currentAlgebraTab = 'algebra-system-solver';
             let currentCalcTab = 'calc-graph';
             let currentTrigTab = 'trig-unit-circle';
 
@@ -482,6 +756,7 @@
                 algebra: document.getElementById('algebra-module'),
                 calculus: document.getElementById('calculus-module'),
                 trig: document.getElementById('trig-module'),
+                '3d-grapher': document.getElementById('3d-grapher-module'), // NEW
                 'ai-tutor': document.getElementById('ai-tutor-module'),
             };
             const navButtons = document.querySelectorAll('.nav-btn');
@@ -507,6 +782,11 @@
                     }
                 });
                 mobileNav.value = moduleName;
+
+                // NEW: Initialize 3D Grapher when switched to
+                if (moduleName === '3d-grapher') {
+                    initThreeJSGrapher();
+                }
             }
 
             navButtons.forEach(btn => {
@@ -517,6 +797,7 @@
             // ===================================================================
             // MODULE 1: ALGEBRA SOLVER
             // ===================================================================
+            const algebraTabButtons = document.querySelectorAll('.algebra-tab-btn');
             const btn2Vars = document.getElementById('btn-2-vars');
             const btn3Vars = document.getElementById('btn-3-vars');
             const inputs2Vars = document.getElementById('inputs-2-vars');
@@ -526,8 +807,40 @@
             const solveAlgebraBtn = document.getElementById('solve-algebra');
             const algebraSolution = document.getElementById('algebra-solution');
             const algebraSteps = document.getElementById('algebra-steps');
+            const explainAlgebraBtn = document.getElementById('explain-algebra-btn'); // NEW
             let algebraVarMode = 2;
 
+            // --- Algebra Tab Controls ---
+            algebraTabButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentAlgebraTab = btn.dataset.tab;
+                    // Update button styles
+                    algebraTabButtons.forEach(b => {
+                        b.classList.toggle('border-b-2', b.dataset.tab === currentAlgebraTab);
+                        b.classList.toggle('border-blue-500', b.dataset.tab === currentAlgebraTab);
+                        b.classList.toggle('text-white', b.dataset.tab === currentAlgebraTab);
+                        b.classList.toggle('text-gray-400', b.dataset.tab !== currentAlgebraTab);
+                    });
+                    // Show/hide content
+                    document.querySelectorAll('.algebra-tab-content').forEach(content => {
+                        content.classList.toggle('hidden', content.id !== currentAlgebraTab);
+                    });
+                    
+                    // Run default logic for the selected tab
+                    if (currentAlgebraTab === 'algebra-system-solver') {
+                        solve2VarSystem(); // Run default
+                    } else if (currentAlgebraTab === 'algebra-polynomial-roots') {
+                        solvePolynomial(); // Run default
+                    } else if (currentAlgebraTab === 'algebra-matrix-calc') {
+                        // No default action needed
+                    }
+                });
+            });
+            // Set default tab style for Algebra
+            document.querySelector('.algebra-tab-btn[data-tab="algebra-system-solver"]')?.click();
+
+
+            // --- Sub-Tab: System Solver ---
             btn2Vars.addEventListener('click', () => {
                 algebraVarMode = 2;
                 inputs2Vars.classList.remove('hidden');
@@ -538,6 +851,7 @@
                 btn2Vars.classList.remove('bg-gray-600');
                 btn3Vars.classList.add('bg-gray-600');
                 btn3Vars.classList.remove('bg-blue-600');
+                explainAlgebraBtn.classList.add('hidden'); // NEW
             });
 
             btn3Vars.addEventListener('click', () => {
@@ -551,6 +865,7 @@
                 btn2Vars.classList.add('bg-gray-600');
                 btn2Vars.classList.remove('bg-blue-600');
                 initThreeJS(); // Initialize 3D canvas if not already
+                explainAlgebraBtn.classList.add('hidden'); // NEW
             });
             
             solveAlgebraBtn.addEventListener('click', () => {
@@ -559,6 +874,7 @@
                 } else {
                     solve3VarSystem();
                 }
+                explainAlgebraBtn.classList.remove('hidden'); // NEW
             });
 
             function solve2VarSystem() {
@@ -610,8 +926,6 @@
                 const ctx = document.getElementById('algebra-chart-2d').getContext('2d');
                 if (algebraChart2D) algebraChart2D.destroy();
 
-                // Generate data for line 1: y = (d1 - a1*x) / b1
-                // Generate data for line 2: y = (d2 - a2*x) / b2
                 const line1Data = [];
                 const line2Data = [];
                 const range = 10;
@@ -740,7 +1054,7 @@
                 }
             }
 
-            // --- Three.js 3D Visualization ---
+            // --- Three.js 3D Visualization (Algebra) ---
             function initThreeJS() {
                 if (threeScene) return; // Already initialized
 
@@ -781,6 +1095,13 @@
                     previousMousePosition = { x: e.offsetX, y: e.offsetY };
                 });
                 
+                // NEW: Scroll to zoom
+                container.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    threeCamera.position.z += e.deltaY * 0.01;
+                    threeCamera.position.z = Math.max(5, Math.min(50, threeCamera.position.z)); // Clamp zoom
+                });
+
                 // Handle resize
                 new ResizeObserver(() => {
                     if (!threeRenderer || !threeCamera) return;
@@ -820,16 +1141,12 @@
                 });
                 const plane = new THREE.Mesh(planeGeom, planeMat);
 
-                // Find a point on the plane.
-                // E.g., if c != 0, let x=0, y=0, then z = d/c
-                // This is a simple way, though not robust for all cases (e.g., plane through origin)
                 let pointOnPlane;
                 if (c !== 0) pointOnPlane = new THREE.Vector3(0, 0, d / c);
                 else if (b !== 0) pointOnPlane = new THREE.Vector3(0, d / b, 0);
                 else if (a !== 0) pointOnPlane = new THREE.Vector3(d / a, 0, 0);
                 else return null; // Invalid plane
                 
-                // Position the plane
                 plane.position.copy(pointOnPlane);
                 
                 // Align the plane to its normal vector
@@ -861,12 +1178,210 @@
                 threeGroup.position.set(-sol.x, -sol.y, -sol.z);
             }
 
+            // --- Sub-Tab: Polynomial Roots ---
+            const solvePolyBtn = document.getElementById('solve-poly');
+            const polySolution = document.getElementById('poly-solution');
+            const polySteps = document.getElementById('poly-steps');
+            
+            solvePolyBtn.addEventListener('click', solvePolynomial);
+
+            function solvePolynomial() {
+                try {
+                    const a = parseFloat(document.getElementById('poly-a').value) || 0;
+                    const b = parseFloat(document.getElementById('poly-b').value) || 0;
+                    const c = parseFloat(document.getElementById('poly-c').value) || 0;
+                    const d = parseFloat(document.getElementById('poly-d').value) || 0;
+                    
+                    if (a === 0) {
+                        polySolution.textContent = 'This is not a cubic polynomial (a=0).';
+                        polySteps.textContent = 'Please enter a non-zero value for "a" to solve a cubic equation.';
+                        if(polynomialChart) polynomialChart.destroy();
+                        return;
+                    }
+
+                    // math.js polynomialRoot expects: constant, x, x^2, x^3
+                    const roots = math.polynomialRoot(d, c, b, a);
+                    
+                    polySolution.textContent = 'Roots found:';
+                    polySteps.innerHTML = roots.map((root, i) => {
+                        return `Root ${i+1}: ${math.format(root, {precision: 5})}`;
+                    }).join('\n');
+
+                    // Graph the polynomial
+                    graphPolynomial(a, b, c, d, roots);
+
+                } catch (err) {
+                    polySolution.textContent = 'Error finding roots.';
+                    polySteps.textContent = err.message;
+                }
+            }
+
+            function graphPolynomial(a, b, c, d, roots) {
+                const funcData = [];
+                const rootData = [];
+                const polyFunc = (x) => a*x**3 + b*x**2 + c*x + d;
+                
+                // Find real roots for plotting
+                const realRoots = roots
+                    .filter(root => math.im(root) === 0)
+                    .map(root => math.re(root));
+                
+                // Determine graph range based on roots
+                let minX = -10, maxX = 10;
+                if (realRoots.length > 0) {
+                    minX = Math.min(...realRoots) - 5;
+                    maxX = Math.max(...realRoots) + 5;
+                }
+                
+                for (let x = minX; x <= maxX; x += (maxX - minX) / 100) {
+                    funcData.push({ x: x, y: polyFunc(x) });
+                }
+                
+                realRoots.forEach(root => {
+                    rootData.push({ x: root, y: 0 });
+                });
+
+                const ctx = document.getElementById('poly-chart').getContext('2d');
+                if (polynomialChart) polynomialChart.destroy();
+                polynomialChart = new Chart(ctx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [
+                            {
+                                label: `f(x) = ${a}x³+${b}x²+${c}x+${d}`,
+                                data: funcData,
+                                showLine: true,
+                                borderColor: 'rgb(59, 130, 246)',
+                                tension: 0.1,
+                                pointRadius: 0
+                            },
+                            {
+                                label: 'Real Roots',
+                                data: rootData,
+                                backgroundColor: 'rgb(248, 113, 113)',
+                                borderColor: 'rgb(255, 255, 255)',
+                                pointRadius: 6,
+                                pointHoverRadius: 8
+                            }
+                        ]
+                    },
+                    options: chartOptions2D()
+                });
+            }
+
+            // --- Sub-Tab: Matrix Calculator ---
+            const matrixOpButtons = document.querySelectorAll('.matrix-op-btn');
+            const matrixResultGrid = document.getElementById('matrix-result-grid');
+            const matrixResultScalar = document.getElementById('matrix-result-scalar');
+            const matrixResultCells = document.querySelectorAll('.matrix-result-cell');
+            const matrixError = document.getElementById('matrix-error');
+
+            function readMatrix(prefix) {
+                const m = [];
+                for (let r = 0; r < 3; r++) {
+                    const row = [];
+                    for (let c = 0; c < 3; c++) {
+                        const val = parseFloat(document.getElementById(`${prefix}-${r}${c}`).value);
+                        row.push(val);
+                    }
+                    m.push(row);
+                }
+                return math.matrix(m);
+            }
+
+            function displayMatrix(m) {
+                const data = m.toArray();
+                let i = 0;
+                for (let r = 0; r < 3; r++) {
+                    for (let c = 0; c < 3; c++) {
+                        matrixResultCells[i].textContent = math.format(data[r][c], {precision: 4});
+                        i++;
+                    }
+                }
+            }
+
+            matrixOpButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    matrixError.textContent = '';
+                    matrixResultScalar.textContent = '';
+                    matrixResultGrid.classList.add('hidden');
+
+                    try {
+                        const A = readMatrix('A');
+                        const B = readMatrix('B');
+                        const op = btn.dataset.op;
+                        let result;
+                        let detA, invA, detB, invB; // Declare vars
+
+                        switch (op) {
+                            case 'add':
+                                result = math.add(A, B);
+                                matrixResultGrid.classList.remove('hidden');
+                                displayMatrix(result);
+                                break;
+                            case 'subtract':
+                                result = math.subtract(A, B);
+                                matrixResultGrid.classList.remove('hidden');
+                                displayMatrix(result);
+                                break;
+                            case 'multiply':
+                                result = math.multiply(A, B);
+                                matrixResultGrid.classList.remove('hidden');
+                                displayMatrix(result);
+                                break;
+                            case 'detA':
+                                result = math.det(A);
+                                matrixResultScalar.textContent = `det(A) = ${math.format(result, {precision: 4})}`;
+                                break;
+                            case 'invA':
+                                result = math.inv(A);
+                                matrixResultGrid.classList.remove('hidden');
+                                displayMatrix(result);
+                                break;
+                            case 'adjA':
+                                detA = math.det(A);
+                                if (Math.abs(detA) < 1e-9) {
+                                    throw new Error("Cannot use formula for singular matrix (det ≈ 0).");
+                                }
+                                invA = math.inv(A);
+                                result = math.multiply(invA, detA);
+                                matrixResultGrid.classList.remove('hidden');
+                                displayMatrix(result);
+                                break;
+                            case 'detB':
+                                result = math.det(B);
+                                matrixResultScalar.textContent = `det(B) = ${math.format(result, {precision: 4})}`;
+                                break;
+                            case 'invB':
+                                result = math.inv(B);
+                                matrixResultGrid.classList.remove('hidden');
+                                displayMatrix(result);
+                                break;
+                            case 'adjB':
+                                detB = math.det(B);
+                                if (Math.abs(detB) < 1e-9) {
+                                    throw new Error("Cannot use formula for singular matrix (det ≈ 0).");
+                                }
+                                invB = math.inv(B);
+                                result = math.multiply(invB, detB);
+                                matrixResultGrid.classList.remove('hidden');
+                                displayMatrix(result);
+                                break;
+                        }
+                    } catch (err) {
+                        matrixError.textContent = `Error: ${err.message}`;
+                    }
+                });
+            });
+
+
             // ===================================================================
             // MODULE 2: CALCULUS LAB
             // ===================================================================
             const calcFunctionInput = document.getElementById('calc-function');
             const calcUpdateBtn = document.getElementById('calc-update-all');
             const calcTabButtons = document.querySelectorAll('.calc-tab-btn');
+            const explainDerivativeBtn = document.getElementById('explain-derivative-btn'); // NEW
 
             // Tab Controls
             calcTabButtons.forEach(btn => {
@@ -888,7 +1403,7 @@
                 });
             });
             // Set default tab style
-            document.querySelector('.calc-tab-btn[data-tab="calc-graph"]')?.click(); // Added optional chaining
+            document.querySelector('.calc-tab-btn[data-tab="calc-graph"]')?.click();
 
             calcUpdateBtn.addEventListener('click', updateCalculusModule);
             
@@ -1111,6 +1626,7 @@
             // ===================================================================
             const trigTabButtons = document.querySelectorAll('.trig-tab-btn');
             const solveTriangleBtn = document.getElementById('solve-triangle');
+            const explainTrigBtn = document.getElementById('explain-trig-btn'); // NEW
 
             // Tab Controls
             trigTabButtons.forEach(btn => {
@@ -1130,7 +1646,7 @@
                 });
             });
             // Set default tab style
-            document.querySelector('.trig-tab-btn[data-tab="trig-unit-circle"]')?.click(); // Added optional chaining
+            document.querySelector('.trig-tab-btn[data-tab="trig-unit-circle"]')?.click();
 
             // --- Unit Circle Logic ---
             const svg = document.getElementById('unit-circle-svg');
@@ -1255,12 +1771,12 @@
                     // Logic for SAS
                     else if (!isNaN(a) && !isNaN(B) && !isNaN(c)) {
                         steps.innerHTML += 'Solving (SAS):\n';
-                        B = toRad(B);
-                        b = Math.sqrt(a*a + c*c - 2*a*c*Math.cos(B));
+                        B_rad = toRad(B); // Keep original B
+                        b = Math.sqrt(a*a + c*c - 2*a*c*Math.cos(B_rad));
                         steps.innerHTML += `1. Find b (Law of Cosines): b² = a²+c²-2ac*cos(B) => b = ${b.toFixed(2)}\n`;
-                        A = toDeg(Math.asin(a * Math.sin(B) / b));
+                        A = toDeg(Math.asin(a * Math.sin(B_rad) / b));
                         steps.innerHTML += `2. Find A (Law of Sines): sin(A)/a = sin(B)/b => A = ${A.toFixed(2)}°\n`;
-                        C = 180 - toDeg(B) - A;
+                        C = 180 - B - A; // Use original B
                         steps.innerHTML += `3. Find C: 180° - A - B => C = ${C.toFixed(2)}°\n`;
                     }
                     // (Add other cases like ASA, AAS, etc. here)
@@ -1275,47 +1791,289 @@
                         <b>Side b:</b> ${b.toFixed(2)} &nbsp; <b>Angle B:</b> ${B.toFixed(2)}° <br>
                         <b>Side c:</b> ${c.toFixed(2)} &nbsp; <b>Angle C:</b> ${C.toFixed(2)}°
                     `;
-                    
+                    explainTrigBtn.classList.remove('hidden'); // NEW
+
                 } catch (err) {
                     solution.textContent = 'Could not solve triangle.';
                     steps.textContent = err.message;
+                    explainTrigBtn.classList.add('hidden'); // NEW
                 }
             });
 
+            // ===================================================================
+            // NEW MODULE 4: 3D FUNCTION GRAPHER
+            // ===================================================================
+            const graph3DBtn = document.getElementById('graph-3d-btn');
+            const graph3DError = document.getElementById('graph-3d-error');
+            const grapherContainer = document.getElementById('three-grapher-canvas');
+
+            function initThreeJSGrapher() {
+                if (grapherScene) return; // Already initialized
+
+                grapherScene = new THREE.Scene();
+                grapherCamera = new THREE.PerspectiveCamera(75, grapherContainer.clientWidth / grapherContainer.clientHeight, 0.1, 1000);
+                grapherRenderer = new THREE.WebGLRenderer({ antialias: true });
+
+                grapherRenderer.setSize(grapherContainer.clientWidth, grapherContainer.clientHeight);
+                grapherContainer.innerHTML = ''; // Clear container
+                grapherContainer.appendChild(grapherRenderer.domElement);
+
+                grapherCamera.position.z = 15;
+                grapherCamera.position.y = 10;
+                
+                const axesHelper = new THREE.AxesHelper(10);
+                grapherScene.add(axesHelper);
+
+                // Add grid helper
+                const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x444444);
+                grapherScene.add(gridHelper);
+
+                // Mouse controls
+                let isDragging = false;
+                let previousMousePosition = { x: 0, y: 0 };
+
+                grapherContainer.addEventListener('mousedown', (e) => isDragging = true);
+                grapherContainer.addEventListener('mouseup', (e) => isDragging = false);
+                grapherContainer.addEventListener('mouseleave', (e) => isDragging = false);
+                grapherContainer.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    const deltaMove = {
+                        x: e.offsetX - previousMousePosition.x,
+                        y: e.offsetY - previousMousePosition.y
+                    };
+                    
+                    if(grapherMesh) {
+                        grapherMesh.rotation.y += deltaMove.x * 0.01;
+                        grapherMesh.rotation.x += deltaMove.y * 0.01;
+                    }
+                    
+                    previousMousePosition = { x: e.offsetX, y: e.offsetY };
+                });
+                
+                // Scroll to zoom
+                grapherContainer.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    grapherCamera.position.z += e.deltaY * 0.01;
+                    grapherCamera.position.z = Math.max(5, Math.min(50, grapherCamera.position.z));
+                });
+
+                // Handle resize
+                new ResizeObserver(() => {
+                    if (!grapherRenderer || !grapherCamera) return;
+                    grapherCamera.aspect = grapherContainer.clientWidth / grapherContainer.clientHeight;
+                    grapherCamera.updateProjectionMatrix();
+                    grapherRenderer.setSize(grapherContainer.clientWidth, grapherContainer.clientHeight);
+                }).observe(grapherContainer);
+
+                animateThreeJSGrapher();
+                update3DGraph(); // Run default
+            }
+            
+            function animateThreeJSGrapher() {
+                if (!grapherRenderer) return;
+                requestAnimationFrame(animateThreeJSGrapher);
+                grapherRenderer.render(grapherScene, grapherCamera);
+            }
+
+            function update3DGraph() {
+                if (!grapherScene) initThreeJSGrapher();
+                
+                graph3DError.textContent = '';
+                const fx = document.getElementById('3d-function').value;
+                let code;
+                try {
+                    code = math.parse(fx).compile();
+                } catch (e) {
+                    graph3DError.textContent = `Error parsing function: ${e.message}`;
+                    return;
+                }
+
+                // Remove old mesh
+                if (grapherMesh) {
+                    grapherScene.remove(grapherMesh);
+                    grapherMesh.geometry.dispose();
+                    grapherMesh.material.dispose();
+                }
+
+                const range = 10;
+                const segments = 50;
+                const geometry = new THREE.PlaneGeometry(range * 2, range * 2, segments, segments);
+                
+                // Deform the plane
+                const vertices = geometry.attributes.position.array;
+                for (let i = 0, j = 0; i < vertices.length; i += 3) {
+                    const x = vertices[i];
+                    const y = vertices[i + 1];
+                    let z = 0;
+                    try {
+                        z = code.evaluate({ x: x, y: y });
+                    } catch (e) { /* ignore errors, z remains 0 */ }
+                    
+                    if (!isFinite(z)) z = 0; // Handle
+                    
+                    vertices[i + 2] = z; // z-coordinate
+                }
+                geometry.computeVertexNormals(); // Recalculate normals for correct lighting
+                
+                const material = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
+                // const material = new THREE.MeshStandardMaterial({ color: 0x3b82f6, side: THREE.DoubleSide, wireframe: true });
+                
+                grapherMesh = new THREE.Mesh(geometry, material);
+                grapherMesh.rotation.x = -Math.PI / 2; // Orient plane to be flat
+                grapherScene.add(grapherMesh);
+                
+                // Center camera
+                grapherCamera.lookAt(grapherScene.position);
+            }
+            
+            graph3DBtn.addEventListener('click', update3DGraph);
+
 
             // ===================================================================
-            // MODULE 4: AI MATH TUTOR
+            // MODULE 5: AI MATH TUTOR
             // ===================================================================
             const aiSolveBtn = document.getElementById('ai-solve-btn');
             const aiProblemInput = document.getElementById('ai-problem-input');
             const aiSolution = document.getElementById('ai-solution');
             const aiLoader = document.getElementById('ai-loader');
+            
+            // --- FIX START ---
+            // Re-adding missing variables and elements from previous version
+            const aiImageUpload = document.getElementById('ai-image-upload');
+            const aiClearBtn = document.getElementById('ai-clear-btn');
+            const imagePreviewContainer = document.getElementById('image-preview-container');
+            
+            let aiChatHistory = [];
+            let uploadedImageBase64 = null;
+            let uploadedMimeType = null;
+            
+            const systemPrompt = `You are an expert math tutor. A user will provide you with a math problem. Your task is to:
+    1.  Identify the type of problem (e.g., algebra, calculus, trigonometry, etc.).
+    2.  Provide a clear, detailed, step-by-step solution.
+    3.  Format the solution for easy reading.
+    4.  **Crucially**: Use LaTeX for all mathematical notation. Enclose inline math in single dollar signs (e.g., \\(f(x) = x^2\\)) and block-level equations in double dollar signs (e.g., $$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$).`; // FIX: Updated prompt text
 
-            aiSolveBtn.addEventListener('click', () => {
-                const userQuery = aiProblemInput.value;
-                if (!userQuery.trim()) {
-                    aiSolution.textContent = 'Please enter a problem.';
-                    return;
+            // Re-adding missing function
+            function clearUpload() {
+                uploadedImageBase64 = null;
+                uploadedMimeType = null;
+                imagePreviewContainer.innerHTML = '';
+                aiImageUpload.value = null; // Reset file input
+            }
+            
+            // Re-adding missing function
+            function initAiTutor() {
+                aiChatHistory = []; // System prompt is now sent separately
+                aiSolution.innerHTML = '<div class="model-message">Hello! I am your AI Math Tutor. Ask me any math question, or upload an image of a problem.</div>';
+                clearUpload();
+            }
+            
+            // Re-adding missing event listener
+            aiImageUpload.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        uploadedImageBase64 = event.target.result;
+                        uploadedMimeType = file.type;
+                        imagePreviewContainer.innerHTML = `<img src="${uploadedImageBase64}" alt="Image preview">`;
+                    };
+                    reader.readAsDataURL(file);
                 }
-                solveWithGemini(userQuery);
             });
 
-            async function solveWithGemini(userQuery) {
-                aiLoader.classList.remove('hidden');
-                aiSolution.classList.add('hidden');
-                aiSolution.innerHTML = ''; // Clear previous solution
+            // Re-adding missing event listener
+            aiClearBtn.addEventListener('click', () => {
+                aiProblemInput.value = '';
+                initAiTutor();
+            });
+            // --- FIX END ---
+            
+            // NEW: Simple Markdown to HTML renderer
+            function simpleMarkdown(text) {
+                return text
+                    // 1. Code blocks (```text```) - do this first
+                    .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+                    // 2. Inline code (`text`)
+                    .replace(/`(.*?)`/g, '<code>$1</code>')
+                    // 3. Bold (**text**)
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    // 4. Italic (*text*)
+                    // Use a regex that doesn't conflict with * (multiplication) in LaTeX
+                    .replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+                    // 5. Unordered lists (must be at start of line)
+                    .replace(/^\* (.*)/gm, '<li>$1</li>')
+                    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+                    .replace(/<\/ul>\s*<ul>/g, '') // Join consecutive
+                    // 6. Ordered lists (must be at start of line)
+                    .replace(/^\d+\. (.*)/gm, '<li>$1</li>')
+                    .replace(/(<li>.*<\/li>)/s, '<ol>$1</ol>')
+                    .replace(/<\/ol>\s*<ol>/g, ''); // Join consecutive
+            }
+            
+            // NEW: Append message to chat UI
+            function appendChatMessage(role, content, isMarkdown = false) {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('chat-message', role === 'user' ? 'user-message' : 'model-message');
+                
+                if (isMarkdown) {
+                    messageDiv.innerHTML = simpleMarkdown(content);
+                } else {
+                    messageDiv.innerHTML = content; // User message HTML is pre-formatted
+                }
+                
+                aiSolution.appendChild(messageDiv);
+                aiSolution.scrollTop = aiSolution.scrollHeight; // Auto-scroll to bottom
+            }
 
-                const apiKey = ""; // API key will be injected by the environment
+            // UPDATED: Renamed to handleUserChatSubmit
+            aiSolveBtn.addEventListener('click', () => {
+                const userQuery = aiProblemInput.value;
+                if (!userQuery.trim() && !uploadedImageBase64) {
+                    // Don't send empty message
+                    return;
+                }
+                
+                // 1. Construct user message for UI
+                let userMessageHTML = `${userQuery}`; // Just the text
+                if (uploadedImageBase64) {
+                    // Let pre-wrap handle the newline
+                    userMessageHTML += `\n<img src="${uploadedImageBase64}" alt="User upload" class="user-message-image">`;
+                }
+                appendChatMessage('user', userMessageHTML, false); // User message is NOT markdown
+
+                // 2. Construct user message for API
+                const userParts = [{ text: userQuery }];
+                if (uploadedImageBase64) {
+                    userParts.push({
+                        inlineData: {
+                            mimeType: uploadedMimeType,
+                            data: uploadedImageBase64.split(',')[1] // Remove base64 prefix
+                        }
+                    });
+                }
+                
+                // 3. Add to history
+                aiChatHistory.push({ role: 'user', parts: userParts });
+                
+                // 4. Clear inputs
+                aiProblemInput.value = '';
+                clearUpload();
+                
+                // 5. Call API
+                solveWithGemini();
+            });
+
+            // UPDATED: Now reads from chat history
+            async function solveWithGemini() {
+                aiLoader.classList.remove('hidden');
+                
+                // UPDATED: Set API key as requested
+                const apiKey = "AIzaSyCuyAFrMmIotaXpSXD2iWnJqeIU3T3dVxk";
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
-                const systemPrompt = `You are an expert math tutor. A user will provide you with a math problem. Your task is to:
-1.  Identify the type of problem (e.g., algebra, calculus, trigonometry, etc.).
-2.  Provide a clear, detailed, step-by-step solution.
-3.  Format the solution for easy reading.
-4.  **Crucially**: Use LaTeX for all mathematical notation. Enclose inline math in single dollar signs (e.g., $f(x) = x^2$) and block-level equations in double dollar signs (e.g., $$x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$$).`;
-
                 const payload = {
-                    contents: [{ parts: [{ text: userQuery }] }],
+                    contents: aiChatHistory, // Send the whole chat history
                     systemInstruction: {
                         parts: [{ text: systemPrompt }]
                     },
@@ -1329,35 +2087,98 @@
                     });
 
                     if (!response.ok) {
-                        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                        const errorData = await response.json();
+                        throw new Error(`API Error: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
                     }
 
                     const result = await response.json();
                     
                     if (result.candidates && result.candidates.length > 0) {
                         const text = result.candidates[0].content.parts[0].text;
-                        aiSolution.innerHTML = text; // Use innerHTML to render potential markdown like **Step 1**
+                        
+                        // Add model response to history
+                        aiChatHistory.push({ role: 'model', parts: [{ text: text }] });
+                        
+                        // Append model response to UI
+                        appendChatMessage('model', text, true); // NEW: Set isMarkdown to true
                         
                         // Tell MathJax to typeset the new content
                         if (window.MathJax) {
-                            MathJax.typesetPromise([aiSolution]).catch((err) => console.warn('MathJax typesetting error:', err));
+                            MathJax.typesetPromise([aiSolution.lastChild]).catch((err) => console.warn('MathJax typesetting error:', err));
                         }
                     } else {
-                        aiSolution.textContent = 'Sorry, I could not find a solution. The response from the AI was empty.';
+                        // Handle no response
+                        const errorText = 'Sorry, I could not find a solution. The response from the AI was empty.';
+                        appendChatMessage('model', errorText, false);
                     }
 
                 } catch (err) {
                     console.error('Error calling Gemini API:', err);
-                    aiSolution.textContent = `An error occurred: ${err.message}. Please check the console for details.`;
+                    const errorText = `An error occurred: ${err.message}. Please check the console for details.`;
+                    appendChatMessage('model', errorText, false);
                 } finally {
                     aiLoader.classList.add('hidden');
-                    aiSolution.classList.remove('hidden');
+                    aiSolution.scrollTop = aiSolution.scrollHeight; // Scroll again
                 }
             }
 
+
+            // ===================================================================
+            // NEW: AI CONTEXT-AWARE BUTTONS
+            // ===================================================================
+            explainDerivativeBtn.addEventListener('click', () => {
+                const fx = document.getElementById('deriv-fx').textContent;
+                const fpx = document.getElementById('deriv-fpx').textContent;
+                
+                // FIX: $...$ to \(...\)
+                const prompt = `Please explain, step-by-step, how to find the derivative of:
+\\(f(x) = ${fx}\\)
+
+My calculator says the answer is:
+\\(f'(x) = ${fpx}\\)
+
+Please show me all the rules (like the power rule, chain rule, product rule, etc.) that are used to get this result.`;
+                
+                // UPDATED: Call the chat submit function instead
+                aiProblemInput.value = prompt;
+                if (currentModule !== 'ai-tutor') switchModule('ai-tutor'); // Switch to tutor
+                aiSolveBtn.click();
+            });
+            
+            explainAlgebraBtn.addEventListener('click', () => {
+                const mode = algebraVarMode;
+                const solution = algebraSolution.textContent;
+                
+                const prompt = `I just solved a ${mode}-variable system of equations and got this solution:
+'${solution}'
+
+The method was called "Cramer's Rule". Can you please explain how Cramer's Rule works for a ${mode}x${mode} system? What are determinants and how are they used to find the solution?`;
+                
+                // UPDATED: Call the chat submit function instead
+                aiProblemInput.value = prompt;
+                if (currentModule !== 'ai-tutor') switchModule('ai-tutor'); // Switch to tutor
+                aiSolveBtn.click();
+            });
+            
+            explainTrigBtn.addEventListener('click', () => {
+                const steps = document.getElementById('triangle-steps').textContent;
+                
+                const prompt = `I just solved a triangle, and these were the steps:
+---
+${steps}
+---
+Can you please explain the logic? What are the 'Law of Sines' and 'Law of Cosines', and how do I know which one to use based on the inputs (like SSS, SAS, ASA)?`;
+                
+                // UPDATED: Call the chat submit function instead
+                aiProblemInput.value = prompt;
+                if (currentModule !== 'ai-tutor') switchModule('ai-tutor'); // Switch to tutor
+                aiSolveBtn.click();
+            });
+
+
             // --- Final Initialization ---
             switchModule('algebra'); // Start on algebra
-            solve2VarSystem(); // Run default algebra problem
+            initAiTutor(); // NEW: Initialize the AI chat
         });
     </script>
 </body>
