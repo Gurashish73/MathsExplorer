@@ -14,11 +14,32 @@
     <!-- 3. Chart.js (2D Graphing) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js"></script>
     
-    <!-- 4. Three.js (3D Graphing) -->
+    <!-- 4. Three.js (3D Graphing) - r128 includes ParametricGeometry -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <!-- 5. MathJax (for LaTeX Rendering) -->
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <!-- NEW: Firebase SDKs -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Make functions globally available for the main script
+        window.firebase = {
+            initializeApp,
+            getAuth,
+            signInAnonymously,
+            signInWithCustomToken,
+            getFirestore,
+            doc,
+            setDoc,
+            onSnapshot,
+            setLogLevel
+        };
+    </script>
 
     <style>
         /* Custom styles */
@@ -39,7 +60,7 @@
             min-height: 100px; /* Added min-height */
         }
         
-        /* NEW: Styles for the chat window */
+        /* Styles for the chat window */
         .chat-window {
             background-color: #1a202c; /* bg-gray-900 */
             border: 1px solid #4a5568; /* border-gray-600 */
@@ -75,28 +96,17 @@
             margin-top: 0.5rem;
         }
         
-        /* NEW: Styling for rendered markdown */
+        /* Styling for rendered markdown */
         .chat-message ul, .chat-message ol {
             margin-left: 1.5rem;
             margin-top: 0.5rem;
             margin-bottom: 0.75rem;
         }
-        .chat-message ul {
-            list-style-type: disc;
-        }
-        .chat-message ol {
-            list-style-type: decimal;
-        }
-        .chat-message li {
-            margin-bottom: 0.25rem;
-        }
-        .chat-message strong {
-            color: #fff;
-            font-weight: 600;
-        }
-        .chat-message em {
-            font-style: italic;
-        }
+        .chat-message ul { list-style-type: disc; }
+        .chat-message ol { list-style-type: decimal; }
+        .chat-message li { margin-bottom: 0.25rem; }
+        .chat-message strong { color: #fff; font-weight: 600; }
+        .chat-message em { font-style: italic; }
         .chat-message code {
             background-color: #1a202c;
             padding: 0.2rem 0.4rem;
@@ -112,10 +122,7 @@
             margin-top: 0.5rem;
             margin-bottom: 0.5rem;
         }
-        .chat-message pre code {
-            padding: 0;
-            background-color: transparent;
-        }
+        .chat-message pre code { padding: 0; background-color: transparent; }
         
         #image-preview-container img {
             max-width: 150px;
@@ -131,23 +138,45 @@
             height: 400px;
             width: 100%;
         }
-        #three-canvas, #three-grapher-canvas { /* Added new canvas */
+        /* Styles for 3D Canvases */
+        #three-canvas, #three-grapher-canvas, #vector-canvas {
             width: 100%;
             height: 400px;
             border-radius: 0.5rem;
             background-color: #000;
         }
-        /* Custom SVG styles for Unit Circle */
-        #unit-circle-svg {
-            cursor: pointer;
-            touch-action: none; /* Prevent scrolling while dragging */
+        
+        /* --- UPDATED: Custom SVG styles for Unit Circle --- */
+        #unit-circle-svg { 
+            cursor: pointer; 
+            touch-action: none; 
+            font-family: monospace;
+            font-size: 10px;
         }
-        #unit-circle-handle {
-            cursor: grab;
+        #unit-circle-handle { cursor: grab; }
+        #unit-circle-handle:active { cursor: grabbing; }
+        /* Style for the angle arc */
+        #unit-angle-arc {
+            fill: #f87171;
+            opacity: 0.3;
         }
-        #unit-circle-handle:active {
-            cursor: grabbing;
+        /* Style for the reference lines */
+        .reference-line {
+            stroke-dasharray: 4;
+            stroke-width: 1.5;
         }
+        #unit-opposite { stroke: #34d399; } /* sin (green) */
+        #unit-adjacent { stroke: #60a5fa; } /* cos (blue) */
+        #unit-hypotenuse { stroke: #f87171; } /* radius (red) */
+        /* Style for text labels */
+        .svg-text {
+            fill: #e2e8f0;
+            font-size: 10px;
+        }
+        .svg-text-sin { fill: #34d399; }
+        .svg-text-cos { fill: #60a5fa; }
+        /* --- END UPDATED STYLES --- */
+
         /* Simple loader */
         .loader {
             border: 4px solid #f3f3f3; /* Light grey */
@@ -179,6 +208,66 @@
         .ai-explain-btn:hover {
             background-color: #6d28d9; /* purple-700 */
         }
+        
+        /* Style for small "Why" button */
+        .ai-why-btn {
+            background-color: #4a5568; /* bg-gray-600 */
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 1.25rem; /* 20px */
+            line-height: 1;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-left: 0.5rem; /* 8px */
+            padding-bottom: 2px; /* Center emoji */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+            flex-shrink: 0; /* Prevent shrinking in flex */
+        }
+        .ai-why-btn:hover {
+            background-color: #6d28d9; /* purple-700 */
+        }
+        
+        /* Button for AI Analyzer */
+        .ai-analyze-btn {
+            background-color: #0d9488; /* teal-600 */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            border: none;
+            font-size: 0.875rem;
+        }
+        .ai-analyze-btn:hover {
+            background-color: #0f766e; /* teal-700 */
+        }
+        
+        /* Shared button styles for tabs */
+        .tab-btn {
+            padding: 0.5rem 1rem;
+            font-medium;
+            border-radius: 0.375rem 0.375rem 0 0;
+            border-bottom-width: 2px;
+            border-color: transparent;
+            transition: all 0.2s;
+        }
+        .tab-btn-active {
+            border-color: #3b82f6; /* blue-500 */
+            color: #ffffff;
+            background-color: #2563eb; /* blue-600 */
+        }
+        .tab-btn-inactive {
+            color: #9ca3af; /* gray-400 */
+            background-color: #374151; /* gray-700 */
+            hover:bg-gray-600;
+        }
+
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 min-h-screen">
@@ -195,7 +284,8 @@
                     <button data-module="algebra" class="nav-btn bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium">Algebra Solver</button>
                     <button data-module="calculus" class="nav-btn text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Calculus Lab</button>
                     <button data-module="trig" class="nav-btn text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Trig Hub</button>
-                    <!-- NEW 3D Grapher Button -->
+                    <!-- NEW: Vector Lab Button -->
+                    <button data-module="vector-lab" class="nav-btn text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Vector Lab</button>
                     <button data-module="3d-grapher" class="nav-btn text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">3D Grapher</button>
                     <button data-module="ai-tutor" class="nav-btn text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">AI Math Tutor</button>
                 </div>
@@ -204,8 +294,9 @@
                     <select id="mobile-nav" class="bg-gray-700 text-white rounded-md p-2">
                         <option value="algebra">Algebra Solver</option>
                         <option value="calculus">Calculus Lab</option>
-                        <option value="trig">Trig Hub</option>
-                        <!-- NEW 3D Grapher Option -->
+                        <option value:="trig">Trig Hub</option>
+                        <!-- NEW: Vector Lab Option -->
+                        <option value="vector-lab">Vector Lab</option>
                         <option value="3d-grapher">3D Grapher</option>
                         <option value="ai-tutor">AI Math Tutor</option>
                     </select>
@@ -244,7 +335,6 @@
                     
                     <!-- 2-Variable Inputs -->
                     <div id="inputs-2-vars" class="space-y-3">
-                        <!-- FIX: $...$ to \(...\) -->
                         <p class="text-gray-400">Enter coefficients for: \(a_1x + b_1y = d_1\) and \(a_2x + b_2y = d_2\)</p>
                         <div class="grid grid-cols-3 gap-4">
                             <input id="a1" type="number" placeholder="a1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="2">
@@ -260,7 +350,6 @@
 
                     <!-- 3-Variable Inputs -->
                     <div id="inputs-3-vars" class="space-y-3 hidden">
-                        <!-- FIX: $...$ to \(...\) -->
                         <p class="text-gray-400">Enter coefficients for: \(ax + by + cz = d\)</p>
                         <div class="grid grid-cols-4 gap-4">
                             <input id="a3" type="number" placeholder="a1" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
@@ -304,11 +393,12 @@
                     </div>
                     <!-- Solution and Steps -->
                     <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
-                        <h2 class="text-2xl font-bold mb-4 text-white">Solution & Steps</h2>
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-2xl font-bold text-white">Solution & Steps</h2>
+                            <button id="explain-algebra-btn" class="ai-why-btn hidden" title="Explain this solution method">🤖</button>
+                        </div>
                         <div id="algebra-solution" class="text-xl font-bold text-green-400 mb-4"></div>
                         <div id="algebra-steps" class="steps-output text-gray-300">Enter coefficients and click solve.</div>
-                        <!-- NEW AI Explain Button -->
-                        <button id="explain-algebra-btn" class="ai-explain-btn hidden">🤖 Explain this solution method</button>
                     </div>
                 </div>
             </div>
@@ -316,7 +406,6 @@
             <!-- Tab Content: Polynomial Roots -->
             <div id="algebra-polynomial-roots" class="algebra-tab-content hidden">
                 <div class="bg-gray-800 p-6 rounded-lg shadow-xl mb-6">
-                    <!-- FIX: $...$ to \(...\) -->
                     <p class="text-gray-400 mb-4">Find roots for: \(ax^3 + bx^2 + cx + d = 0\)</p>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <input id="poly-a" type="number" placeholder="a (x³)" class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
@@ -336,7 +425,10 @@
                         </div>
                     </div>
                     <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
-                        <h2 class="text-2xl font-bold mb-4 text-white">Roots</h2>
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-2xl font-bold text-white">Roots</h2>
+                            <button id="explain-poly-btn" class="ai-why-btn hidden" title="Explain how to find these roots">🤖</button>
+                        </div>
                         <div id="poly-solution" class="text-lg font-bold text-green-400 mb-4"></div>
                         <div id="poly-steps" class="steps-output text-gray-300">Enter coefficients to find roots.</div>
                     </div>
@@ -387,7 +479,10 @@
                             <button class="matrix-op-btn" data-op="invB">inv(B)</button>
                             <button class="matrix-op-btn" data-op="adjB">adj(B)</button>
                         </div>
-                        <h2 class="text-2xl font-bold text-white mt-6">Result</h2>
+                        <div class="flex items-center justify-between mt-6">
+                            <h2 class="text-2xl font-bold text-white">Result</h2>
+                            <button id="explain-matrix-btn" class="ai-why-btn hidden" title="Explain this matrix operation">🤖</button>
+                        </div>
                         <div id="matrix-result-scalar" class="text-xl font-bold text-green-400 my-2"></div>
                         <div id="matrix-result-grid" class="grid grid-cols-3 gap-2 mt-4 hidden">
                             <div class="matrix-result-cell"></div><div class="matrix-result-cell"></div><div class="matrix-result-cell"></div>
@@ -408,12 +503,17 @@
 
             <!-- Input -->
             <div class="bg-gray-800 p-6 rounded-lg shadow-xl mb-6">
-                <!-- FIX: $...$ to \(...\) -->
                 <label for="calc-function" class="block text-lg font-medium mb-2">Enter function \(f(x)\):</label>
                 <input id="calc-function" type="text" placeholder="e.g., x^2, sin(x), x^3 - 2*x" class="w-full p-3 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg" value="x^2">
-                <button id="calc-update-all" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200">
-                    Run All
-                </button>
+                <div class="mt-4 flex flex-col sm:flex-row gap-4">
+                    <button id="calc-update-all" class="w-full sm:w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200">
+                        Run All
+                    </button>
+                    <!-- NEW: AI Analyze Button -->
+                    <button id="ai-analyze-calc-btn" class="w-full sm:w-1/2 ai-analyze-btn">
+                        🤖 Analyze this Function
+                    </button>
+                </div>
             </div>
 
             <!-- Tabs -->
@@ -443,16 +543,17 @@
                     <h2 class="text-2xl font-bold mb-4 text-white">Symbolic Derivative</h2>
                     <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
                         <div class="steps-output">
-                            <!-- FIX: $...$ to \(...\) -->
                             <span class="text-gray-400">\(f(x) = \)</span>
                             <span id="deriv-fx" class="text-white"></span>
                             <br><br>
-                            <!-- FIX: $...$ to \(...\) -->
-                            <span class="text-gray-400">\(f'(x) = \frac{d}{dx}[f(x)] = \)</span>
-                            <span id="deriv-fpx" class="text-xl text-green-400"></span>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="text-gray-400">\(f'(x) = \frac{d}{dx}[f(x)] = \)</span>
+                                    <span id="deriv-fpx" class="text-xl text-green-400"></span>
+                                </div>
+                                <button id="explain-derivative-btn" class="ai-why-btn" title="Explain this derivative">🤖</button>
+                            </div>
                         </div>
-                        <!-- NEW AI Explain Button -->
-                        <button id="explain-derivative-btn" class="ai-explain-btn">🤖 Explain this derivative</button>
                     </div>
                 </div>
 
@@ -480,6 +581,7 @@
                         <div class="mt-4 text-center">
                             <span class="text-lg">Approximate Area: </span>
                             <span id="integral-area" class="text-2xl font-bold text-green-400">...</span>
+                            <button id="explain-integral-btn" class="ai-why-btn hidden" title="Explain this Riemann sum">🤖</button>
                         </div>
                     </div>
                 </div>
@@ -489,10 +591,8 @@
                     <h2 class="text-2xl font-bold mb-4 text-white">Limit Explorer</h2>
                     <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
                         <div class="flex items-center space-x-2 mb-4">
-                            <!-- FIX: $...$ to \(...\) -->
                             <span class="text-lg">\(\lim_{x \to}\)</span>
                             <input id="limit-a" type="number" value="0" class="w-24 p-2 rounded bg-gray-700 text-white border border-gray-600">
-                            <!-- FIX: $...$ to \(...\) -->
                             <span id="limit-fx" class="text-lg ml-2">\(f(x)\)</span>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -522,6 +622,7 @@
                         <div class="mt-4 text-center">
                             <span class="text-lg">Approaching: </span>
                             <span id="limit-value" class="text-2xl font-bold text-green-400">...</span>
+                            <button id="explain-limit-btn" class="ai-why-btn hidden" title="Explain this limit">🤖</button>
                         </div>
                     </div>
                 </div>
@@ -548,6 +649,7 @@
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <!-- Unit Circle SVG -->
                     <div class="lg:col-span-2 bg-gray-800 p-4 rounded-lg shadow-xl flex justify-center items-center">
+                        <!-- UPDATED SVG -->
                         <svg id="unit-circle-svg" viewBox="0 0 300 300" class="w-full max-w-md">
                             <defs>
                                 <!-- Grid lines pattern -->
@@ -563,32 +665,50 @@
                                 <!-- Axes -->
                                 <line x1="-150" y1="0" x2="150" y2="0" stroke="#6b7280" stroke-width="1"/>
                                 <line x1="0" y1="-150" x2="0" y2="150" stroke="#6b7280" stroke-width="1"/>
+                                <!-- Axis Labels -->
+                                <text class="svg-text" x="135" y="-5">x</text>
+                                <text class="svg-text" x="5" y="-135">y</text>
+                                <text class="svg-text" x="123" y="12">(1,0)</text>
+                                <text class="svg-text" x="-145" y="12">(-1,0)</text>
+                                <text class="svg-text" x="-10" y="-123">(0,1)</text>
+                                <text class="svg-text" x="-10" y="133">(0,-1)</text>
                                 
                                 <!-- Unit Circle -->
                                 <circle r="120" fill="none" stroke="#3b82f6" stroke-width="2"/>
                                 
+                                <!-- Angle Arc -->
+                                <path id="unit-angle-arc" d="M 120 0 A 120 120 0 0 1 120 0"></path>
+
                                 <!-- Reference Triangle -->
-                                <line id="unit-hypotenuse" x1="0" y1="0" x2="120" y2="0" stroke="#f87171" stroke-width="1.5" stroke-dasharray="4"/>
-                                <line id="unit-opposite" x1="120" y1="0" x2="120" y2="0" stroke="#34d399" stroke-width="1.5" stroke-dasharray="4"/>
-                                <line id="unit-adjacent" x1="0" y1="0" x2="120" y2="0" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="4"/>
+                                <line id="unit-adjacent" class="reference-line" x1="0" y1="0" x2="120" y2="0"/>
+                                <line id="unit-opposite" class="reference-line" x1="120" y1="0" x2="120" y2="0"/>
+                                <line id="unit-hypotenuse" class="reference-line" x1="0" y1="0" x2="120" y2="0"/>
+                                
+                                <!-- Triangle Labels -->
+                                <text id="cos-label" class="svg-text svg-text-cos" x="60" y="12">cos(θ)</text>
+                                <text id="sin-label" class="svg-text svg-text-sin" x="125" y="0">sin(θ)</text>
 
                                 <!-- Handle -->
                                 <circle id="unit-circle-handle" r="8" fill="#f87171" transform="translate(120, 0)"/>
                             </g>
                         </svg>
+                        <!-- END UPDATED SVG -->
                     </div>
                     <!-- Values -->
                     <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
                         <h2 class="text-2xl font-bold mb-4 text-white">Live Values</h2>
                         <div class="space-y-4">
-                            <div class="text-lg">
-                                <span class="text-gray-400">Angle (θ):</span>
-                                <span id="uc-angle-deg" class="font-bold text-white ml-2">0.0°</span>
+                            <!-- NEW: Input Fields -->
+                            <div>
+                                <label for="uc-angle-deg-input" class="block text-sm font-medium text-gray-400">Angle (θ) in Degrees:</label>
+                                <input id="uc-angle-deg-input" type="number" step="0.1" class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600" value="0.0">
                             </div>
-                            <div class="text-lg">
-                                <span class="text-gray-400">Radians:</span>
-                                <span id="uc-angle-rad" class="font-bold text-white ml-2">0.00</span>
+                            <div>
+                                <label for="uc-angle-rad-input" class="block text-sm font-medium text-gray-400">Angle (θ) in Radians:</label>
+                                <input id="uc-angle-rad-input" type="text" class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600" value="0.00">
                             </div>
+                            <!-- END NEW -->
+
                             <hr class="border-gray-600"/>
                             <div class="text-lg">
                                 <span class="text-blue-400 font-medium">cos(θ) (x):</span>
@@ -649,30 +769,141 @@
                     </div>
                     <!-- Results -->
                     <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
-                        <h2 class="text-2xl font-bold mb-4 text-white">Results & Steps</h2>
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-2xl font-bold text-white">Results & Steps</h2>
+                            <button id="explain-trig-btn" class="ai-why-btn hidden" title="Explain this solution method">🤖</button>
+                        </div>
                         <div id="triangle-solution" class="text-lg font-bold text-green-400 mb-4"></div>
                         <div id="triangle-steps" class="steps-output text-gray-300">Enter 3 values to solve.</div>
-                        <!-- NEW AI Explain Button -->
-                        <button id="explain-trig-btn" class="ai-explain-btn hidden">🤖 Explain this solution method</button>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- =================================================================== -->
-        <!-- NEW MODULE 4: 3D FUNCTION GRAPHER -->
+        <!-- NEW MODULE 4: VECTOR LAB -->
+        <!-- =================================================================== -->
+        <div id="vector-lab-module" class="module-content hidden">
+            <h1 class="text-3xl font-bold mb-6 text-white">3D Vector Lab</h1>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Inputs & Results -->
+                <div class="bg-gray-800 p-6 rounded-lg shadow-xl space-y-6">
+                    <!-- Inputs -->
+                    <div>
+                        <h2 class="text-2xl font-bold text-white mb-4">Inputs</h2>
+                        <!-- Vector 1 -->
+                        <div class="flex items-center space-x-2 mb-3">
+                            <label class="text-lg font-medium text-blue-400">v1 = (</label>
+                            <input id="v1_x" type="number" value="1" class="w-20 p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <label>,</label>
+                            <input id="v1_y" type="number" value="2" class="w-20 p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <label>,</label>
+                            <input id="v1_z" type="number" value="3" class="w-20 p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <label>)</label>
+                        </div>
+                        <!-- Vector 2 -->
+                        <div class="flex items-center space-x-2">
+                            <label class="text-lg font-medium text-green-400">v2 = (</label>
+                            <input id="v2_x" type="number" value="4" class="w-20 p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <label>,</label>
+                            <input id="v2_y" type="number" value="5" class="w-20 p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <label>,</label>
+                            <input id="v2_z" type="number" value="6" class="w-20 p-2 text-center rounded bg-gray-700 text-white border border-gray-600">
+                            <label>)</label>
+                        </div>
+                        <button id="vector-calculate-btn" class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200">
+                            Calculate & Visualize
+                        </button>
+                    </div>
+                    
+                    <!-- Results -->
+                    <div>
+                        <h2 class="text-2xl font-bold text-white mb-4">Results</h2>
+                        <div id="vector-results" class="steps-output text-lg">
+                            Click calculate to see vector operations.
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Visualization -->
+                <div class="bg-gray-800 p-4 rounded-lg shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4 text-white">Visualization</h2>
+                    <div id="vector-canvas"></div>
+                    <p class="text-center text-gray-400 mt-2">Click and drag to rotate. Scroll to zoom.</p>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- =================================================================== -->
+        <!-- MODULE 5: 3D FUNCTION GRAPHER -->
         <!-- =================================================================== -->
         <div id="3d-grapher-module" class="module-content hidden">
             <h1 class="text-3xl font-bold mb-6 text-white">3D Function Grapher</h1>
             
             <!-- Input -->
             <div class="bg-gray-800 p-6 rounded-lg shadow-xl mb-6">
-                <!-- FIX: $...$ to \(...\) -->
-                <label for="3d-function" class="block text-lg font-medium mb-2">Enter function \(z = f(x, y)\):</label>
-                <input id="3d-function" type="text" placeholder="e.g., sin(x) + cos(y), x^2 - y^2" class="w-full p-3 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg" value="sin(sqrt(x^2 + y^2))">
-                <button id="graph-3d-btn" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200">
-                    Graph Function
-                </button>
+                <!-- NEW: Mode Toggle -->
+                <div class="flex mb-4 rounded-lg bg-gray-700 p-1">
+                    <button id="grapher-mode-explicit" class="tab-btn w-1/2 tab-btn-active">
+                        Explicit: z = f(x, y)
+                    </button>
+                    <button id="grapher-mode-parametric" class="tab-btn w-1/2 tab-btn-inactive">
+                        Parametric: (x, y, z)(u, v)
+                    </button>
+                </div>
+
+                <!-- Explicit Inputs -->
+                <div id="explicit-inputs">
+                    <label for="3d-function" class="block text-lg font-medium mb-2">Enter function \(z = f(x, y)\):</label>
+                    <input id="3d-function" type="text" placeholder="e.g., sin(sqrt(x^2+y^2))" class="w-full p-3 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg" value="sin(sqrt(x^2 + y^2))">
+                </div>
+
+                <!-- Parametric Inputs -->
+                <div id="parametric-inputs" class="hidden space-y-3">
+                    <p class="text-gray-400">Enter functions of u and v (from 0 to 1). Default is a Torus.</p>
+                    <div>
+                        <label for="3d-func-x" class="block text-sm font-medium text-gray-400">\(x(u, v) = \)</label>
+                        <input id="3d-func-x" type="text" class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600" value="(3 + 1 * cos(v * 2 * PI)) * cos(u * 2 * PI)">
+                    </div>
+                    <div>
+                        <label for="3d-func-y" class="block text-sm font-medium text-gray-400">\(y(u, v) = \)</label>
+                        <input id="3d-func-y" type="text" class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600" value="(3 + 1 * cos(v * 2 * PI)) * sin(u * 2 * PI)">
+                    </div>
+                    <div>
+                        <label for="3d-func-z" class="block text-sm font-medium text-gray-400">\(z(u, v) = \)</label>
+                        <input id="3d-func-z" type="text" class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600" value="1 * sin(v * 2 * PI)">
+                    </div>
+                </div>
+
+                <div class="mt-4 flex flex-col sm:flex-row gap-4">
+                    <button id="graph-3d-btn" class="w-full sm:w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200">
+                        Graph Function
+                    </button>
+                    <!-- NEW: AI Analyze Button -->
+                    <button id="ai-analyze-3d-btn" class="w-full sm:w-1/2 ai-analyze-btn">
+                        🤖 Analyze (Explicit only)
+                    </button>
+                </div>
+
+                <!-- NEW: Collaboration Section -->
+                <div class="mt-6 border-t border-gray-700 pt-4">
+                    <h3 class="text-lg font-semibold text-white mb-2">Collaboration</h3>
+                    <button id="start-share-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition duration-200">
+                        Start Sharing Session
+                    </button>
+                    <div id="share-info-box" class="hidden mt-4 space-y-2">
+                        <label class="block text-sm font-medium text-gray-400">Share this link with a friend:</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="share-link-input" readonly class="w-full p-2 rounded bg-gray-900 text-gray-300 border border-gray-600">
+                            <button id="copy-link-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold">Copy</button>
+                        </div>
+                        <button id="leave-session-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition duration-200 mt-2">
+                            Leave Session
+                        </button>
+                    </div>
+                </div>
             </div>
             
             <!-- Visualization -->
@@ -686,16 +917,15 @@
 
 
         <!-- =================================================================== -->
-        <!-- MODULE 5: AI MATH TUTOR -->
+        <!-- MODULE 6: AI MATH TUTOR -->
         <!-- =================================================================== -->
         <div id="ai-tutor-module" class="module-content hidden">
-            <!-- UPDATED: Removed (powered by Gemini) -->
             <h1 class="text-3xl font-bold mb-6 text-white">AI Math Tutor</h1>
             <div class="bg-gray-800 p-6 rounded-lg shadow-xl mb-6">
                 <label for="ai-problem-input" class="block text-lg font-medium mb-2">Enter any math problem:</label>
                 <textarea id="ai-problem-input" rows="4" class="w-full p-3 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg" placeholder="e.g., Solve 3x^2 - 4x + 1 = 0, or 'what is the derivative of sin(x^2)?'"></textarea>
                 
-                <!-- NEW: Image Upload and Chat Controls -->
+                <!-- Image Upload and Chat Controls -->
                 <div class="mt-4 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div>
                         <label for="ai-image-upload" class="cursor-pointer text-blue-400 hover:text-blue-300">
@@ -713,7 +943,6 @@
                 </div>
                 
                 <button id="ai-solve-btn" class="mt-4 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200">
-                    <!-- UPDATED: Changed "Ask Gemini" to "Ask AI" -->
                     Ask AI
                 </button>
             </div>
@@ -721,7 +950,6 @@
             <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
                 <h2 class="text-2xl font-bold mb-4 text-white">Chat</h2>
                 <div id="ai-loader" class="loader hidden"></div>
-                <!-- UPDATED: Changed from steps-output to chat-window -->
                 <div id="ai-solution" class="chat-window text-gray-300 text-lg leading-relaxed"></div>
             </div>
         </div>
@@ -732,7 +960,196 @@
     <!-- JAVASCRIPT LOGIC -->
     <!-- =================================================================== -->
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+
+            // --- Firebase Globals ---
+            let db, auth, appId, userId;
+            let currentSessionId = null;
+            let sessionUnsubscribe = null;
+            let isUpdatingFromFirestore = false;
+            let lastCameraUpdate = 0;
+            const DEBOUNCE_TIME = 200; // ms for camera sync
+
+            // --- Firebase Functions ---
+            async function initFirebase() {
+                try {
+                    // Get Firebase config and App ID from global scope (provided by environment)
+                    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+                    appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+                    if (!firebaseConfig) {
+                        console.error("Firebase config is missing.");
+                        return;
+                    }
+
+                    // Initialize Firebase
+                    const app = window.firebase.initializeApp(firebaseConfig);
+                    auth = window.firebase.getAuth(app);
+                    db = window.firebase.getFirestore(app);
+                    window.firebase.setLogLevel('debug');
+
+                    // Sign in
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await window.firebase.signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await window.firebase.signInAnonymously(auth);
+                    }
+                    userId = auth.currentUser.uid;
+                    console.log("Firebase initialized, User ID:", userId);
+
+                } catch (err) {
+                    console.error("Error initializing Firebase:", err);
+                }
+            }
+
+            // Checks URL for a session ID and joins if found
+            function checkUrlForSession() {
+                const params = new URLSearchParams(window.location.search);
+                const sessionId = params.get('session');
+                if (sessionId) {
+                    console.log("Found session ID in URL, joining:", sessionId);
+                    // Switch to 3D grapher and join
+                    switchModule('3d-grapher');
+                    joinShareSession(sessionId);
+                }
+            }
+
+            // --- Collaboration Functions ---
+
+            // Gets the current state of the 3D grapher UI
+            function getGrapherState() {
+                return {
+                    mode: grapherMode,
+                    explicitFunc: document.getElementById('3d-function').value,
+                    paramX: document.getElementById('3d-func-x').value,
+                    paramY: document.getElementById('3d-func-y').value,
+                    paramZ: document.getElementById('3d-func-z').value
+                };
+            }
+
+            // Sets the 3D grapher UI from a state object
+            function setGrapherState(state) {
+                if (!state) return;
+                isUpdatingFromFirestore = true;
+                
+                if (state.mode === 'parametric') {
+                    parametricBtn.click(); // This click updates grapherMode
+                    document.getElementById('3d-func-x').value = state.paramX;
+                    document.getElementById('3d-func-y').value = state.paramY;
+                    document.getElementById('3d-func-z').value = state.paramZ;
+                } else {
+                    explicitBtn.click();
+                    document.getElementById('3d-function').value = state.explicitFunc;
+                }
+                
+                // Trigger the graph update
+                update3DGraph();
+                
+                // Release the lock after a short delay
+                setTimeout(() => { isUpdatingFromFirestore = false; }, 100);
+            }
+
+            // Creates a new sharing session
+            function startNewShareSession() {
+                const sessionId = crypto.randomUUID();
+                joinShareSession(sessionId);
+            }
+
+            // Joins a specific session ID and listens for changes
+            function joinShareSession(sessionId) {
+                if (sessionUnsubscribe) {
+                    sessionUnsubscribe(); // Leave previous session
+                }
+                
+                currentSessionId = sessionId;
+                console.log("Joining session:", sessionId);
+
+                // Update UI
+                const shareUrl = new URL(window.location.href);
+                shareUrl.searchParams.set('session', sessionId);
+                document.getElementById('share-link-input').value = shareUrl.href;
+                document.getElementById('share-info-box').classList.remove('hidden');
+                document.getElementById('start-share-btn').classList.add('hidden');
+
+                const sessionRef = window.firebase.doc(db, 'artifacts', appId, 'public', 'data', 'graphing-sessions', sessionId);
+
+                // Listen for updates
+                sessionUnsubscribe = window.firebase.onSnapshot(sessionRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        if (data.senderId !== userId) { // Don't react to our own changes
+                            console.log("Received update from firestore:", data);
+                            isUpdatingFromFirestore = true;
+                            
+                            // Apply graph state
+                            if (data.graphState) {
+                                setGrapherState(data.graphState);
+                            }
+                            
+                            // Apply camera state
+                            if (data.cameraState && grapherCamera && grapherMesh) {
+                                grapherCamera.position.fromArray(data.cameraState.position);
+                                grapherMesh.rotation.set(data.cameraState.rotation[0], data.cameraState.rotation[1], data.cameraState.rotation[2]);
+                                grapherCamera.lookAt(0, 0, 0); // Re-orient camera
+                            }
+
+                            isUpdatingFromFirestore = false;
+                        }
+                    }
+                });
+
+                // Send initial state
+                sendUpdateToFirestore();
+            }
+
+            // Leaves the current session
+            function leaveShareSession() {
+                if (sessionUnsubscribe) {
+                    sessionUnsubscribe();
+                    sessionUnsubscribe = null;
+                }
+                currentSessionId = null;
+                document.getElementById('share-info-box').classList.add('hidden');
+                document.getElementById('start-share-btn').classList.remove('hidden');
+                console.log("Left sharing session.");
+            }
+
+            // Sends an update to Firestore
+            async function sendUpdateToFirestore(cameraState = null) {
+                if (isUpdatingFromFirestore || !currentSessionId) return;
+
+                const sessionRef = window.firebase.doc(db, 'artifacts', appId, 'public', 'data', 'graphing-sessions', currentSessionId);
+                
+                const dataToSend = {
+                    senderId: userId,
+                    timestamp: Date.now()
+                };
+
+                if (cameraState) {
+                    dataToSend.cameraState = cameraState;
+                } else {
+                    dataToSend.graphState = getGrapherState();
+                }
+
+                try {
+                    await window.firebase.setDoc(sessionRef, dataToSend, { merge: true });
+                } catch (err) {
+                    console.error("Error sending update to Firestore:", err);
+                }
+            }
+
+            // Copies the share link to clipboard
+            function copyShareLink() {
+                const input = document.getElementById('share-link-input');
+                input.select();
+                try {
+                    document.execCommand('copy');
+                } catch (err) {
+                    console.error("Failed to copy link:", err);
+                }
+            }
+
+            // --- END Firebase Functions ---
 
             // --- Global State & Charts ---
             let algebraChart2D = null;
@@ -743,20 +1160,29 @@
             
             // 3D Algebra
             let threeScene, threeCamera, threeRenderer, threeGroup;
-            // NEW: 3D Grapher
+            // 3D Grapher
             let grapherScene, grapherCamera, grapherRenderer, grapherMesh;
+            let grapherMode = 'explicit'; // NEW: Grapher mode
+            // NEW: 3D Vector Lab
+            let vectorScene, vectorCamera, vectorRenderer, vectorGroup;
+
 
             let currentModule = 'algebra';
             let currentAlgebraTab = 'algebra-system-solver';
             let currentCalcTab = 'calc-graph';
             let currentTrigTab = 'trig-unit-circle';
 
+            // --- Wait for Firebase before initializing app ---
+            await initFirebase();
+            checkUrlForSession();
+
             // --- DOM Elements ---
             const modules = {
                 algebra: document.getElementById('algebra-module'),
                 calculus: document.getElementById('calculus-module'),
                 trig: document.getElementById('trig-module'),
-                '3d-grapher': document.getElementById('3d-grapher-module'), // NEW
+                'vector-lab': document.getElementById('vector-lab-module'), // NEW
+                '3d-grapher': document.getElementById('3d-grapher-module'),
                 'ai-tutor': document.getElementById('ai-tutor-module'),
             };
             const navButtons = document.querySelectorAll('.nav-btn');
@@ -783,9 +1209,13 @@
                 });
                 mobileNav.value = moduleName;
 
-                // NEW: Initialize 3D Grapher when switched to
+                // Initialize 3D scenes when switched to
                 if (moduleName === '3d-grapher') {
                     initThreeJSGrapher();
+                } else if (moduleName === 'vector-lab') { // NEW
+                    initThreeJSVectorLab();
+                } else if (moduleName === 'trig') { // NEW: Init trig chart
+                    initTrigChart();
                 }
             }
 
@@ -807,7 +1237,7 @@
             const solveAlgebraBtn = document.getElementById('solve-algebra');
             const algebraSolution = document.getElementById('algebra-solution');
             const algebraSteps = document.getElementById('algebra-steps');
-            const explainAlgebraBtn = document.getElementById('explain-algebra-btn'); // NEW
+            const explainAlgebraBtn = document.getElementById('explain-algebra-btn');
             let algebraVarMode = 2;
 
             // --- Algebra Tab Controls ---
@@ -831,12 +1261,9 @@
                         solve2VarSystem(); // Run default
                     } else if (currentAlgebraTab === 'algebra-polynomial-roots') {
                         solvePolynomial(); // Run default
-                    } else if (currentAlgebraTab === 'algebra-matrix-calc') {
-                        // No default action needed
                     }
                 });
             });
-            // Set default tab style for Algebra
             document.querySelector('.algebra-tab-btn[data-tab="algebra-system-solver"]')?.click();
 
 
@@ -851,7 +1278,7 @@
                 btn2Vars.classList.remove('bg-gray-600');
                 btn3Vars.classList.add('bg-gray-600');
                 btn3Vars.classList.remove('bg-blue-600');
-                explainAlgebraBtn.classList.add('hidden'); // NEW
+                explainAlgebraBtn.classList.add('hidden');
             });
 
             btn3Vars.addEventListener('click', () => {
@@ -865,7 +1292,7 @@
                 btn2Vars.classList.add('bg-gray-600');
                 btn2Vars.classList.remove('bg-blue-600');
                 initThreeJS(); // Initialize 3D canvas if not already
-                explainAlgebraBtn.classList.add('hidden'); // NEW
+                explainAlgebraBtn.classList.add('hidden');
             });
             
             solveAlgebraBtn.addEventListener('click', () => {
@@ -874,17 +1301,14 @@
                 } else {
                     solve3VarSystem();
                 }
-                explainAlgebraBtn.classList.remove('hidden'); // NEW
+                explainAlgebraBtn.classList.remove('hidden');
             });
 
             function solve2VarSystem() {
                 try {
                     const [a1, b1, d1] = ['a1', 'b1', 'd1'].map(id => parseFloat(document.getElementById(id).value));
                     const [a2, b2, d2] = ['a2', 'b2', 'd2'].map(id => parseFloat(document.getElementById(id).value));
-                    
                     const A = math.matrix([[a1, b1], [a2, b2]]);
-                    const b = [d1, d2];
-                    
                     const D = math.det(A);
                     const Dx = math.det([[d1, b1], [d2, b2]]);
                     const Dy = math.det([[a1, d1], [a2, d2]]);
@@ -895,27 +1319,15 @@
                         if(algebraChart2D) algebraChart2D.destroy();
                         return;
                     }
-                    
                     const x = Dx / D;
                     const y = Dy / D;
-                    
                     algebraSolution.textContent = `Solution: x = ${math.format(x, {precision: 4})}, y = ${math.format(y, {precision: 4})}`;
                     algebraSteps.textContent = `Using Cramer's Rule:\n\n`
-                        + `1. Main Determinant (D):\n`
-                        + `   | ${a1}  ${b1} |\n`
-                        + `   | ${a2}  ${b2} | = (${a1} * ${b2}) - (${b1} * ${a2}) = ${D}\n\n`
-                        + `2. Dx Determinant:\n`
-                        + `   | ${d1}  ${b1} |\n`
-                        + `   | ${d2}  ${b2} | = (${d1} * ${b2}) - (${b1} * ${d2}) = ${Dx}\n\n`
-                        + `3. Dy Determinant:\n`
-                        + `   | ${a1}  ${d1} |\n`
-                        + `   | ${a2}  ${d2} | = (${a1} * ${d2}) - (${d1} * ${a2}) = ${Dy}\n\n`
-                        + `4. Solve:\n`
-                        + `   x = Dx / D = ${Dx} / ${D} = ${x}\n`
-                        + `   y = Dy / D = ${Dy} / ${D} = ${y}`;
-                        
+                        + `1. Main Determinant (D):\n    | ${a1}  ${b1} |\n    | ${a2}  ${b2} | = ${D}\n\n`
+                        + `2. Dx Determinant:\n    | ${d1}  ${b1} |\n    | ${d2}  ${b2} | = ${Dx}\n\n`
+                        + `3. Dy Determinant:\n    | ${a1}  ${d1} |\n    | ${a2}  ${d2} | = ${Dy}\n\n`
+                        + `4. Solve:\n    x = Dx / D = ${x}\n    y = Dy / D = ${y}`;
                     visualize2DSystem(a1, b1, d1, a2, b2, d2, x, y);
-
                 } catch (err) {
                     algebraSolution.textContent = 'Error solving system.';
                     algebraSteps.textContent = err.message;
@@ -925,83 +1337,25 @@
             function visualize2DSystem(a1, b1, d1, a2, b2, d2, solX, solY) {
                 const ctx = document.getElementById('algebra-chart-2d').getContext('2d');
                 if (algebraChart2D) algebraChart2D.destroy();
-
-                const line1Data = [];
-                const line2Data = [];
-                const range = 10;
-                const minX = solX - range;
-                const maxX = solX + range;
-
+                const line1Data = [], line2Data = [];
+                const range = 10, minX = solX - range, maxX = solX + range;
                 for (let x = minX; x <= maxX; x += 0.5) {
-                    if (b1 !== 0) {
-                        line1Data.push({ x: x, y: (d1 - a1 * x) / b1 });
-                    }
-                    if (b2 !== 0) {
-                        line2Data.push({ x: x, y: (d2 - a2 * x) / b2 });
-                    }
+                    if (b1 !== 0) line1Data.push({ x: x, y: (d1 - a1 * x) / b1 });
+                    if (b2 !== 0) line2Data.push({ x: x, y: (d2 - a2 * x) / b2 });
                 }
-                
-                // Handle vertical lines
-                if (b1 === 0) { // Line 1 is x = d1/a1
-                    const xVal = d1/a1;
-                    line1Data.push({x: xVal, y: solY - range}, {x: xVal, y: solY + range});
-                }
-                 if (b2 === 0) { // Line 2 is x = d2/a2
-                    const xVal = d2/a2;
-                    line2Data.push({x: xVal, y: solY - range}, {x: xVal, y: solY + range});
-                }
+                if (b1 === 0) line1Data.push({x: d1/a1, y: solY - range}, {x: d1/a1, y: solY + range});
+                if (b2 === 0) line2Data.push({x: d2/a2, y: solY - range}, {x: d2/a2, y: solY + range});
 
                 algebraChart2D = new Chart(ctx, {
                     type: 'scatter',
                     data: {
                         datasets: [
-                            {
-                                label: `Line 1: ${a1}x + ${b1}y = ${d1}`,
-                                data: line1Data,
-                                showLine: true,
-                                borderColor: 'rgb(59, 130, 246)',
-                                backgroundColor: 'rgb(59, 130, 246)',
-                                tension: 0.1,
-                                pointRadius: 0
-                            },
-                            {
-                                label: `Line 2: ${a2}x + ${b2}y = ${d2}`,
-                                data: line2Data,
-                                showLine: true,
-                                borderColor: 'rgb(234, 179, 8)',
-                                backgroundColor: 'rgb(234, 179, 8)',
-                                tension: 0.1,
-                                pointRadius: 0
-                            },
-                            {
-                                label: 'Solution',
-                                data: [{ x: solX, y: solY }],
-                                backgroundColor: 'rgb(248, 113, 113)',
-                                borderColor: 'rgb(255, 255, 255)',
-                                pointRadius: 6,
-                                pointHoverRadius: 8
-                            }
+                            { label: `Line 1: ${a1}x + ${b1}y = ${d1}`, data: line1Data, showLine: true, borderColor: 'rgb(59, 130, 246)', tension: 0.1, pointRadius: 0 },
+                            { label: `Line 2: ${a2}x + ${b2}y = ${d2}`, data: line2Data, showLine: true, borderColor: 'rgb(234, 179, 8)', tension: 0.1, pointRadius: 0 },
+                            { label: 'Solution', data: [{ x: solX, y: solY }], backgroundColor: 'rgb(248, 113, 113)', pointRadius: 6 }
                         ]
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: { 
-                                type: 'linear', 
-                                position: 'bottom',
-                                grid: { color: '#4a5568' },
-                                ticks: { color: '#d1d5db' }
-                            },
-                            y: {
-                                grid: { color: '#4a5568' },
-                                ticks: { color: '#d1d5db' }
-                            }
-                        },
-                        plugins: {
-                            legend: { labels: { color: '#d1d5db' } }
-                        }
-                    }
+                    options: chartOptions2D()
                 });
             }
 
@@ -1010,44 +1364,23 @@
                     const [a1, b1, c1, d1] = ['a3', 'b3', 'c3', 'd3'].map(id => parseFloat(document.getElementById(id).value));
                     const [a2, b2, c2, d2] = ['a4', 'b4', 'c4', 'd4'].map(id => parseFloat(document.getElementById(id).value));
                     const [a3, b3, c3, d3] = ['a5', 'b5', 'c5', 'd5'].map(id => parseFloat(document.getElementById(id).value));
-
                     const A = math.matrix([[a1, b1, c1], [a2, b2, c2], [a3, b3, c3]]);
-                    const b = [d1, d2, d3];
-
                     const D = math.det(A);
                     const Dx = math.det([[d1, b1, c1], [d2, b2, c2], [d3, b3, c3]]);
                     const Dy = math.det([[a1, d1, c1], [a2, d2, c2], [a3, d3, c3]]);
                     const Dz = math.det([[a1, b1, d1], [a2, b2, d2], [a3, b3, d3]]);
-                    
                     if (D === 0) {
                         algebraSolution.textContent = 'No unique solution.';
                         algebraSteps.textContent = `Determinant (D) = ${D}\nSystem is either inconsistent or dependent.`;
-                        clearThreeScene();
-                        return;
+                        clearThreeScene(); return;
                     }
-
-                    const x = Dx / D;
-                    const y = Dy / D;
-                    const z = Dz / D;
-
-                    algebraSolution.textContent = `Solution: x = ${math.format(x, {precision: 4})}, y = ${math.format(y, {precision: 4})}, z = ${math.format(z, {precision: 4})}`;
+                    const x = Dx / D, y = Dy / D, z = Dz / D;
+                    algebraSolution.textContent = `Solution: x = ${math.format(x, 4)}, y = ${math.format(y, 4)}, z = ${math.format(z, 4)}`;
                     algebraSteps.textContent = `Using Cramer's Rule (3x3):\n\n`
                         + `1. Main Determinant (D) = ${D}\n`
-                        + `2. Dx Determinant = ${Dx}\n`
-                        + `3. Dy Determinant = ${Dy}\n`
-                        + `4. Dz Determinant = ${Dz}\n\n`
-                        + `5. Solve:\n`
-                        + `   x = Dx / D = ${Dx} / ${D} = ${x}\n`
-                        + `   y = Dy / D = ${Dy} / ${D} = ${y}\n`
-                        + `   z = Dz / D = ${Dz} / ${D} = ${z}`;
-                        
-                    visualize3DSystem(
-                        {a: a1, b: b1, c: c1, d: d1},
-                        {a: a2, b: b2, c: c2, d: d2},
-                        {a: a3, b: b3, c: c3, d: d3},
-                        {x, y, z}
-                    );
-
+                        + `2. Dx Determinant = ${Dx}\n... (etc.) ...\n`
+                        + `5. Solve:\n    x = Dx / D = ${x}\n    y = Dy / D = ${y}\n    z = Dz / D = ${z}`;
+                    visualize3DSystem({a: a1, b: b1, c: c1, d: d1}, {a: a2, b: b2, c: c2, d: d2}, {a: a3, b: b3, c: c3, d: d3}, {x, y, z});
                 } catch (err) {
                     algebraSolution.textContent = 'Error solving system.';
                     algebraSteps.textContent = err.message;
@@ -1057,124 +1390,72 @@
             // --- Three.js 3D Visualization (Algebra) ---
             function initThreeJS() {
                 if (threeScene) return; // Already initialized
-
                 const container = document.getElementById('three-canvas');
                 threeScene = new THREE.Scene();
                 threeCamera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
                 threeRenderer = new THREE.WebGLRenderer({ antialias: true });
-                
                 threeRenderer.setSize(container.clientWidth, container.clientHeight);
                 container.appendChild(threeRenderer.domElement);
-                
-                threeGroup = new THREE.Group(); // Group to hold planes and solution
+                threeGroup = new THREE.Group();
                 threeScene.add(threeGroup);
-                
                 threeCamera.position.z = 10;
-                
-                // Add axes
                 const axesHelper = new THREE.AxesHelper(10);
                 threeScene.add(axesHelper);
-
-                // Mouse controls
-                let isDragging = false;
-                let previousMousePosition = { x: 0, y: 0 };
-                
+                let isDragging = false, prevPos = { x: 0, y: 0 };
                 container.addEventListener('mousedown', (e) => isDragging = true);
-                container.addEventListener('mouseup', (e) => isDragging = false);
-                container.addEventListener('mouseleave', (e) => isDragging = false);
+                container.addEventListener('mouseup', () => isDragging = false);
+                container.addEventListener('mouseleave', () => isDragging = false);
                 container.addEventListener('mousemove', (e) => {
                     if (!isDragging) return;
-                    const deltaMove = {
-                        x: e.offsetX - previousMousePosition.x,
-                        y: e.offsetY - previousMousePosition.y
-                    };
-                    
-                    threeGroup.rotation.y += deltaMove.x * 0.01;
-                    threeGroup.rotation.x += deltaMove.y * 0.01;
-                    
-                    previousMousePosition = { x: e.offsetX, y: e.offsetY };
+                    threeGroup.rotation.y += (e.offsetX - prevPos.x) * 0.01;
+                    threeGroup.rotation.x += (e.offsetY - prevPos.y) * 0.01;
+                    prevPos = { x: e.offsetX, y: e.offsetY };
                 });
-                
-                // NEW: Scroll to zoom
                 container.addEventListener('wheel', (e) => {
                     e.preventDefault();
-                    threeCamera.position.z += e.deltaY * 0.01;
-                    threeCamera.position.z = Math.max(5, Math.min(50, threeCamera.position.z)); // Clamp zoom
+                    threeCamera.position.z = Math.max(5, Math.min(50, threeCamera.position.z + e.deltaY * 0.01));
                 });
-
-                // Handle resize
                 new ResizeObserver(() => {
                     if (!threeRenderer || !threeCamera) return;
                     threeCamera.aspect = container.clientWidth / container.clientHeight;
                     threeCamera.updateProjectionMatrix();
                     threeRenderer.setSize(container.clientWidth, container.clientHeight);
                 }).observe(container);
-
                 animateThreeJS();
             }
-
             function animateThreeJS() {
-                if (!threeRenderer) return; // Stop if disposed
+                if (!threeRenderer) return;
                 requestAnimationFrame(animateThreeJS);
                 threeRenderer.render(threeScene, threeCamera);
             }
-
             function clearThreeScene() {
                 if (!threeGroup) return;
-                while (threeGroup.children.length > 0) {
-                    threeGroup.remove(threeGroup.children[0]);
-                }
+                while (threeGroup.children.length > 0) threeGroup.remove(threeGroup.children[0]);
             }
-
             function createPlane(eq, color) {
-                // ax + by + cz = d
                 const { a, b, c, d } = eq;
                 const normal = new THREE.Vector3(a, b, c).normalize();
-                
-                // Create a large plane geometry
                 const planeGeom = new THREE.PlaneGeometry(15, 15);
-                const planeMat = new THREE.MeshBasicMaterial({
-                    color: color,
-                    opacity: 0.5,
-                    transparent: true,
-                    side: THREE.DoubleSide
-                });
+                const planeMat = new THREE.MeshBasicMaterial({ color, opacity: 0.5, transparent: true, side: THREE.DoubleSide });
                 const plane = new THREE.Mesh(planeGeom, planeMat);
-
                 let pointOnPlane;
                 if (c !== 0) pointOnPlane = new THREE.Vector3(0, 0, d / c);
                 else if (b !== 0) pointOnPlane = new THREE.Vector3(0, d / b, 0);
                 else if (a !== 0) pointOnPlane = new THREE.Vector3(d / a, 0, 0);
-                else return null; // Invalid plane
-                
+                else return null;
                 plane.position.copy(pointOnPlane);
-                
-                // Align the plane to its normal vector
                 plane.lookAt(pointOnPlane.clone().add(normal));
-                
                 return plane;
             }
-
             function visualize3DSystem(eq1, eq2, eq3, sol) {
                 if (!threeScene) initThreeJS();
                 clearThreeScene();
-
-                const plane1 = createPlane(eq1, 0xff0000); // Red
-                const plane2 = createPlane(eq2, 0x00ff00); // Green
-                const plane3 = createPlane(eq3, 0x0000ff); // Blue
-                
-                if(plane1) threeGroup.add(plane1);
-                if(plane2) threeGroup.add(plane2);
-                if(plane3) threeGroup.add(plane3);
-
-                // Add solution point
+                [createPlane(eq1, 0xff0000), createPlane(eq2, 0x00ff00), createPlane(eq3, 0x0000ff)].forEach(p => p && threeGroup.add(p));
                 const solGeom = new THREE.SphereGeometry(0.2, 32, 32);
-                const solMat = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // Yellow
+                const solMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
                 const solSphere = new THREE.Mesh(solGeom, solMat);
                 solSphere.position.set(sol.x, sol.y, sol.z);
                 threeGroup.add(solSphere);
-                
-                // Center camera on solution
                 threeGroup.position.set(-sol.x, -sol.y, -sol.z);
             }
 
@@ -1182,64 +1463,42 @@
             const solvePolyBtn = document.getElementById('solve-poly');
             const polySolution = document.getElementById('poly-solution');
             const polySteps = document.getElementById('poly-steps');
+            const explainPolyBtn = document.getElementById('explain-poly-btn');
             
             solvePolyBtn.addEventListener('click', solvePolynomial);
 
             function solvePolynomial() {
                 try {
-                    const a = parseFloat(document.getElementById('poly-a').value) || 0;
-                    const b = parseFloat(document.getElementById('poly-b').value) || 0;
-                    const c = parseFloat(document.getElementById('poly-c').value) || 0;
-                    const d = parseFloat(document.getElementById('poly-d').value) || 0;
-                    
+                    const [a, b, c, d] = ['poly-a', 'poly-b', 'poly-c', 'poly-d'].map(id => parseFloat(document.getElementById(id).value) || 0);
                     if (a === 0) {
                         polySolution.textContent = 'This is not a cubic polynomial (a=0).';
-                        polySteps.textContent = 'Please enter a non-zero value for "a" to solve a cubic equation.';
+                        polySteps.textContent = 'Please enter a non-zero value for "a".';
                         if(polynomialChart) polynomialChart.destroy();
-                        return;
+                        explainPolyBtn.classList.add('hidden'); return;
                     }
-
-                    // math.js polynomialRoot expects: constant, x, x^2, x^3
                     const roots = math.polynomialRoot(d, c, b, a);
-                    
                     polySolution.textContent = 'Roots found:';
-                    polySteps.innerHTML = roots.map((root, i) => {
-                        return `Root ${i+1}: ${math.format(root, {precision: 5})}`;
-                    }).join('\n');
-
-                    // Graph the polynomial
+                    polySteps.innerHTML = roots.map((root, i) => `Root ${i+1}: ${math.format(root, {precision: 5})}`).join('\n');
                     graphPolynomial(a, b, c, d, roots);
-
+                    explainPolyBtn.classList.remove('hidden');
                 } catch (err) {
                     polySolution.textContent = 'Error finding roots.';
                     polySteps.textContent = err.message;
+                    explainPolyBtn.classList.add('hidden');
                 }
             }
 
             function graphPolynomial(a, b, c, d, roots) {
-                const funcData = [];
-                const rootData = [];
+                const funcData = [], rootData = [];
                 const polyFunc = (x) => a*x**3 + b*x**2 + c*x + d;
-                
-                // Find real roots for plotting
-                const realRoots = roots
-                    .filter(root => math.im(root) === 0)
-                    .map(root => math.re(root));
-                
-                // Determine graph range based on roots
+                const realRoots = roots.filter(r => math.im(r) === 0).map(r => math.re(r));
                 let minX = -10, maxX = 10;
                 if (realRoots.length > 0) {
                     minX = Math.min(...realRoots) - 5;
                     maxX = Math.max(...realRoots) + 5;
                 }
-                
-                for (let x = minX; x <= maxX; x += (maxX - minX) / 100) {
-                    funcData.push({ x: x, y: polyFunc(x) });
-                }
-                
-                realRoots.forEach(root => {
-                    rootData.push({ x: root, y: 0 });
-                });
+                for (let x = minX; x <= maxX; x += (maxX - minX) / 100) funcData.push({ x: x, y: polyFunc(x) });
+                realRoots.forEach(root => rootData.push({ x: root, y: 0 }));
 
                 const ctx = document.getElementById('poly-chart').getContext('2d');
                 if (polynomialChart) polynomialChart.destroy();
@@ -1247,22 +1506,8 @@
                     type: 'scatter',
                     data: {
                         datasets: [
-                            {
-                                label: `f(x) = ${a}x³+${b}x²+${c}x+${d}`,
-                                data: funcData,
-                                showLine: true,
-                                borderColor: 'rgb(59, 130, 246)',
-                                tension: 0.1,
-                                pointRadius: 0
-                            },
-                            {
-                                label: 'Real Roots',
-                                data: rootData,
-                                backgroundColor: 'rgb(248, 113, 113)',
-                                borderColor: 'rgb(255, 255, 255)',
-                                pointRadius: 6,
-                                pointHoverRadius: 8
-                            }
+                            { label: `f(x) = ${a}x³...`, data: funcData, showLine: true, borderColor: 'rgb(59, 130, 246)', tension: 0.1, pointRadius: 0 },
+                            { label: 'Real Roots', data: rootData, backgroundColor: 'rgb(248, 113, 113)', pointRadius: 6 }
                         ]
                     },
                     options: chartOptions2D()
@@ -1275,99 +1520,45 @@
             const matrixResultScalar = document.getElementById('matrix-result-scalar');
             const matrixResultCells = document.querySelectorAll('.matrix-result-cell');
             const matrixError = document.getElementById('matrix-error');
+            const explainMatrixBtn = document.getElementById('explain-matrix-btn');
+            let lastMatrixOp = '';
 
             function readMatrix(prefix) {
                 const m = [];
                 for (let r = 0; r < 3; r++) {
                     const row = [];
-                    for (let c = 0; c < 3; c++) {
-                        const val = parseFloat(document.getElementById(`${prefix}-${r}${c}`).value);
-                        row.push(val);
-                    }
+                    for (let c = 0; c < 3; c++) row.push(parseFloat(document.getElementById(`${prefix}-${r}${c}`).value));
                     m.push(row);
                 }
                 return math.matrix(m);
             }
-
             function displayMatrix(m) {
                 const data = m.toArray();
                 let i = 0;
-                for (let r = 0; r < 3; r++) {
-                    for (let c = 0; c < 3; c++) {
-                        matrixResultCells[i].textContent = math.format(data[r][c], {precision: 4});
-                        i++;
-                    }
-                }
+                for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) matrixResultCells[i++].textContent = math.format(data[r][c], {precision: 4});
             }
 
             matrixOpButtons.forEach(btn => {
                 btn.addEventListener('click', () => {
-                    matrixError.textContent = '';
-                    matrixResultScalar.textContent = '';
+                    matrixError.textContent = ''; matrixResultScalar.textContent = '';
                     matrixResultGrid.classList.add('hidden');
-
+                    explainMatrixBtn.classList.add('hidden');
+                    lastMatrixOp = btn.dataset.op;
                     try {
-                        const A = readMatrix('A');
-                        const B = readMatrix('B');
-                        const op = btn.dataset.op;
-                        let result;
-                        let detA, invA, detB, invB; // Declare vars
-
+                        const A = readMatrix('A'), B = readMatrix('B'), op = btn.dataset.op;
+                        let result, det;
                         switch (op) {
-                            case 'add':
-                                result = math.add(A, B);
-                                matrixResultGrid.classList.remove('hidden');
-                                displayMatrix(result);
-                                break;
-                            case 'subtract':
-                                result = math.subtract(A, B);
-                                matrixResultGrid.classList.remove('hidden');
-                                displayMatrix(result);
-                                break;
-                            case 'multiply':
-                                result = math.multiply(A, B);
-                                matrixResultGrid.classList.remove('hidden');
-                                displayMatrix(result);
-                                break;
-                            case 'detA':
-                                result = math.det(A);
-                                matrixResultScalar.textContent = `det(A) = ${math.format(result, {precision: 4})}`;
-                                break;
-                            case 'invA':
-                                result = math.inv(A);
-                                matrixResultGrid.classList.remove('hidden');
-                                displayMatrix(result);
-                                break;
-                            case 'adjA':
-                                detA = math.det(A);
-                                if (Math.abs(detA) < 1e-9) {
-                                    throw new Error("Cannot use formula for singular matrix (det ≈ 0).");
-                                }
-                                invA = math.inv(A);
-                                result = math.multiply(invA, detA);
-                                matrixResultGrid.classList.remove('hidden');
-                                displayMatrix(result);
-                                break;
-                            case 'detB':
-                                result = math.det(B);
-                                matrixResultScalar.textContent = `det(B) = ${math.format(result, {precision: 4})}`;
-                                break;
-                            case 'invB':
-                                result = math.inv(B);
-                                matrixResultGrid.classList.remove('hidden');
-                                displayMatrix(result);
-                                break;
-                            case 'adjB':
-                                detB = math.det(B);
-                                if (Math.abs(detB) < 1e-9) {
-                                    throw new Error("Cannot use formula for singular matrix (det ≈ 0).");
-                                }
-                                invB = math.inv(B);
-                                result = math.multiply(invB, detB);
-                                matrixResultGrid.classList.remove('hidden');
-                                displayMatrix(result);
-                                break;
+                            case 'add': result = math.add(A, B); matrixResultGrid.classList.remove('hidden'); displayMatrix(result); break;
+                            case 'subtract': result = math.subtract(A, B); matrixResultGrid.classList.remove('hidden'); displayMatrix(result); break;
+                            case 'multiply': result = math.multiply(A, B); matrixResultGrid.classList.remove('hidden'); displayMatrix(result); break;
+                            case 'detA': result = math.det(A); matrixResultScalar.textContent = `det(A) = ${math.format(result, 4)}`; break;
+                            case 'invA': result = math.inv(A); matrixResultGrid.classList.remove('hidden'); displayMatrix(result); break;
+                            case 'adjA': det = math.det(A); if (Math.abs(det) < 1e-9) throw new Error("Singular matrix"); result = math.multiply(math.inv(A), det); matrixResultGrid.classList.remove('hidden'); displayMatrix(result); break;
+                            case 'detB': result = math.det(B); matrixResultScalar.textContent = `det(B) = ${math.format(result, 4)}`; break;
+                            case 'invB': result = math.inv(B); matrixResultGrid.classList.remove('hidden'); displayMatrix(result); break;
+                            case 'adjB': det = math.det(B); if (Math.abs(det) < 1e-9) throw new Error("Singular matrix"); result = math.multiply(math.inv(B), det); matrixResultGrid.classList.remove('hidden'); displayMatrix(result); break;
                         }
+                        explainMatrixBtn.classList.remove('hidden');
                     } catch (err) {
                         matrixError.textContent = `Error: ${err.message}`;
                     }
@@ -1381,106 +1572,63 @@
             const calcFunctionInput = document.getElementById('calc-function');
             const calcUpdateBtn = document.getElementById('calc-update-all');
             const calcTabButtons = document.querySelectorAll('.calc-tab-btn');
-            const explainDerivativeBtn = document.getElementById('explain-derivative-btn'); // NEW
+            const explainDerivativeBtn = document.getElementById('explain-derivative-btn');
+            const explainIntegralBtn = document.getElementById('explain-integral-btn');
+            const explainLimitBtn = document.getElementById('explain-limit-btn');
+            const aiAnalyzeCalcBtn = document.getElementById('ai-analyze-calc-btn'); // NEW
 
             // Tab Controls
             calcTabButtons.forEach(btn => {
                 btn.addEventListener('click', () => {
                     currentCalcTab = btn.dataset.tab;
-                    // Update button styles
                     calcTabButtons.forEach(b => {
                         b.classList.toggle('border-b-2', b.dataset.tab === currentCalcTab);
                         b.classList.toggle('border-blue-500', b.dataset.tab === currentCalcTab);
                         b.classList.toggle('text-white', b.dataset.tab === currentCalcTab);
                         b.classList.toggle('text-gray-400', b.dataset.tab !== currentCalcTab);
                     });
-                    // Show/hide content
-                    document.querySelectorAll('.calc-tab-content').forEach(content => {
-                        content.classList.toggle('hidden', content.id !== currentCalcTab);
-                    });
-                    // Run update for the now-visible tab
+                    document.querySelectorAll('.calc-tab-content').forEach(c => c.classList.toggle('hidden', c.id !== currentCalcTab));
                     updateCalculusModule(); 
                 });
             });
-            // Set default tab style
             document.querySelector('.calc-tab-btn[data-tab="calc-graph"]')?.click();
 
             calcUpdateBtn.addEventListener('click', updateCalculusModule);
             
             // Integral slider
-            const integralN = document.getElementById('integral-n');
-            const integralNLabel = document.getElementById('integral-n-label');
+            const integralN = document.getElementById('integral-n'), integralNLabel = document.getElementById('integral-n-label');
             integralN.addEventListener('input', () => {
                 integralNLabel.textContent = integralN.value;
-                if (currentCalcTab === 'calc-integral') {
-                    drawRiemannSum();
-                }
+                if (currentCalcTab === 'calc-integral') drawRiemannSum();
             });
-            
-            // Other integral/limit inputs
-            ['integral-a', 'integral-b', 'limit-a'].forEach(id => {
-                document.getElementById(id).addEventListener('change', updateCalculusModule);
-            });
+            ['integral-a', 'integral-b', 'limit-a'].forEach(id => document.getElementById(id).addEventListener('change', updateCalculusModule));
 
             function updateCalculusModule() {
                 const fx = calcFunctionInput.value;
                 if (!fx) return;
-
                 switch (currentCalcTab) {
-                    case 'calc-graph':
-                        updateCalcGraph(fx);
-                        break;
-                    case 'calc-derivative':
-                        updateDerivative(fx);
-                        break;
-                    case 'calc-integral':
-                        drawRiemannSum(fx);
-                        break;
-                    case 'calc-limit':
-                        updateLimitTable(fx);
-                        break;
+                    case 'calc-graph': updateCalcGraph(fx); break;
+                    case 'calc-derivative': updateDerivative(fx); break;
+                    case 'calc-integral': drawRiemannSum(fx); break;
+                    case 'calc-limit': updateLimitTable(fx); break;
                 }
             }
-            
             function parseFunction(fx) {
-                try {
-                    const node = math.parse(fx);
-                    return node.compile();
-                } catch (e) {
-                    console.error("Error parsing function:", e);
-                    return null;
-                }
+                try { return math.parse(fx).compile(); }
+                catch (e) { console.error("Error parsing function:", e); return null; }
             }
-
             function updateCalcGraph(fx) {
-                const code = parseFunction(fx);
-                if (!code) return;
-
+                const code = parseFunction(fx); if (!code) return;
                 const data = [];
-                for (let x = -10; x <= 10; x += 0.25) {
-                    try {
-                        data.push({ x: x, y: code.evaluate({ x: x }) });
-                    } catch (e) {}
-                }
-
+                for (let x = -10; x <= 10; x += 0.25) try { data.push({ x: x, y: code.evaluate({ x: x }) }); } catch (e) {}
                 const ctx = document.getElementById('calc-chart').getContext('2d');
                 if (calcChart) calcChart.destroy();
                 calcChart = new Chart(ctx, {
                     type: 'scatter',
-                    data: {
-                        datasets: [{
-                            label: `f(x) = ${fx}`,
-                            data: data,
-                            showLine: true,
-                            borderColor: 'rgb(59, 130, 246)',
-                            tension: 0.1,
-                            pointRadius: 0
-                        }]
-                    },
+                    data: { datasets: [{ label: `f(x) = ${fx}`, data, showLine: true, borderColor: 'rgb(59, 130, 246)', tension: 0.1, pointRadius: 0 }] },
                     options: chartOptions2D()
                 });
             }
-
             function updateDerivative(fx) {
                 try {
                     const derivative = math.derivative(fx, 'x');
@@ -1490,134 +1638,61 @@
                     document.getElementById('deriv-fpx').textContent = `Error: ${err.message}`;
                 }
             }
-
             function drawRiemannSum(fxOverride) {
                 const fx = fxOverride || calcFunctionInput.value;
-                const code = parseFunction(fx);
-                if (!code) return;
-                
-                const a = parseFloat(document.getElementById('integral-a').value);
-                const b = parseFloat(document.getElementById('integral-b').value);
-                const n = parseInt(document.getElementById('integral-n').value);
-                
-                const dx = (b - a) / n;
-                let totalArea = 0;
-                
-                const funcData = [];
-                const barData = [];
-                
-                // Midpoint rule
+                const code = parseFunction(fx); if (!code) return;
+                const a = parseFloat(document.getElementById('integral-a').value), b = parseFloat(document.getElementById('integral-b').value), n = parseInt(integralN.value);
+                const dx = (b - a) / n; let totalArea = 0;
+                const funcData = [], barData = [];
                 for (let i = 0; i < n; i++) {
                     const x_mid = a + (i + 0.5) * dx;
-                    let y;
-                    try {
-                        y = code.evaluate({ x: x_mid });
-                        if (isNaN(y) || !isFinite(y)) continue;
-                        totalArea += y * dx;
-                        barData.push({ x: x_mid, y: y });
-                    } catch (e) {}
+                    try { const y = code.evaluate({ x: x_mid }); if (!isNaN(y) && isFinite(y)) { totalArea += y * dx; barData.push({ x: x_mid, y }); } } catch (e) {}
                 }
-
-                // Generate function line data
-                const step = (b - a) / 100;
-                for (let x = a; x <= b; x += step) {
-                    try {
-                        funcData.push({ x: x, y: code.evaluate({ x: x }) });
-                    } catch (e) {}
-                }
-                
-                document.getElementById('integral-area').textContent = math.format(totalArea, {precision: 5});
-
+                for (let x = a; x <= b; x += (b - a) / 100) try { funcData.push({ x: x, y: code.evaluate({ x: x }) }); } catch (e) {}
+                document.getElementById('integral-area').textContent = math.format(totalArea, 5);
+                explainIntegralBtn.classList.remove('hidden');
                 const ctx = document.getElementById('integral-chart').getContext('2d');
                 if (integralChart) integralChart.destroy();
                 integralChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         datasets: [
-                            {
-                                label: 'Function',
-                                data: funcData,
-                                type: 'line',
-                                borderColor: 'rgb(234, 179, 8)',
-                                pointRadius: 0,
-                                order: 1
-                            },
-                            {
-                                label: 'Rectangles (Midpoint)',
-                                data: barData.map(p => ({x: p.x, y: p.y})),
-                                backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                                barPercentage: 1.0,
-                                categoryPercentage: 1.0,
-                                order: 2
-                            }
+                            { label: 'Function', data: funcData, type: 'line', borderColor: 'rgb(234, 179, 8)', pointRadius: 0, order: 1 },
+                            { label: 'Rectangles (Midpoint)', data: barData.map(p => ({x: p.x, y: p.y})), backgroundColor: 'rgba(59, 130, 246, 0.5)', barPercentage: 1.0, categoryPercentage: 1.0, order: 2 }
                         ]
                     },
                     options: chartOptions2D(true)
                 });
             }
-            
             function updateLimitTable(fx) {
-                const code = parseFunction(fx);
-                if (!code) return;
-                
+                const code = parseFunction(fx); if (!code) return;
                 const a = parseFloat(document.getElementById('limit-a').value);
                 document.getElementById('limit-fx').textContent = `f(x) = ${fx}`;
-                
-                const leftTable = document.getElementById('limit-table-left');
-                const rightTable = document.getElementById('limit-table-right');
-                leftTable.innerHTML = '';
-                rightTable.innerHTML = '';
-                
-                const deltas = [0.1, 0.01, 0.001, 0.0001, 0.00001];
-                let lastLeftY, lastRightY;
-                
+                const leftTable = document.getElementById('limit-table-left'), rightTable = document.getElementById('limit-table-right');
+                leftTable.innerHTML = ''; rightTable.innerHTML = '';
+                const deltas = [0.1, 0.01, 0.001, 0.0001]; let lastLeftY, lastRightY;
                 deltas.forEach(delta => {
-                    let x_left = a - delta;
-                    let y_left = '...';
-                    try { y_left = code.evaluate({ x: x_left }); lastLeftY = y_left; } catch (e) {}
-                    
-                    let x_right = a + delta;
-                    let y_right = '...';
-                    try { y_right = code.evaluate({ x: x_right }); lastRightY = y_right; } catch (e) {}
-                    
+                    let x_left = a - delta, y_left = '...'; try { y_left = code.evaluate({ x: x_left }); lastLeftY = y_left; } catch (e) {}
+                    let x_right = a + delta, y_right = '...'; try { y_right = code.evaluate({ x: x_right }); lastRightY = y_right; } catch (e) {}
                     leftTable.innerHTML += `<tr class="border-t border-gray-700"><td class="p-2">${x_left}</td><td class="p-2">${math.format(y_left, 5)}</td></tr>`;
                     rightTable.innerHTML += `<tr class="border-t border-gray-700"><td class="p-2">${x_right}</td><td class="p-2">${math.format(y_right, 5)}</td></tr>`;
                 });
-                
                 let limitVal = '...';
-                if (Math.abs(lastLeftY - lastRightY) < 1e-4) {
-                    limitVal = math.format(lastRightY, 5);
-                } else if (lastLeftY === Infinity || lastRightY === Infinity) {
-                    limitVal = '∞';
-                } else if (lastLeftY === -Infinity || lastRightY === -Infinity) {
-                    limitVal = '-∞';
-                } else {
-                    limitVal = 'Does Not Exist (DNE)';
-                }
+                if (Math.abs(lastLeftY - lastRightY) < 1e-4) limitVal = math.format(lastRightY, 5);
+                else if (lastLeftY === Infinity || lastRightY === Infinity) limitVal = '∞';
+                else if (lastLeftY === -Infinity || lastRightY === -Infinity) limitVal = '-∞';
+                else limitVal = 'Does Not Exist (DNE)';
                 document.getElementById('limit-value').textContent = limitVal;
+                explainLimitBtn.classList.remove('hidden');
             }
-
             function chartOptions2D(isIntegral = false) {
                 return {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     scales: {
-                        x: { 
-                            type: 'linear', 
-                            position: 'bottom',
-                            grid: { color: '#4a5568' },
-                            ticks: { color: '#d1d5db' },
-                            barThickness: 'flex'
-                        },
-                        y: {
-                            grid: { color: '#4a5568' },
-                            ticks: { color: '#d1d5db' },
-                            beginAtZero: isIntegral
-                        }
+                        x: { type: 'linear', position: 'bottom', grid: { color: '#4a5568' }, ticks: { color: '#d1d5db' }, barThickness: 'flex' },
+                        y: { grid: { color: '#4a5568' }, ticks: { color: '#d1d5db' }, beginAtZero: isIntegral }
                     },
-                    plugins: {
-                        legend: { labels: { color: '#d1d5db' } }
-                    }
+                    plugins: { legend: { labels: { color: '#d1d5db' } } }
                 };
             }
 
@@ -1626,105 +1701,159 @@
             // ===================================================================
             const trigTabButtons = document.querySelectorAll('.trig-tab-btn');
             const solveTriangleBtn = document.getElementById('solve-triangle');
-            const explainTrigBtn = document.getElementById('explain-trig-btn'); // NEW
+            const explainTrigBtn = document.getElementById('explain-trig-btn');
+
+            // --- Unit Circle Globals ---
+            const radius = 120, center = 150; 
+            let ucIsDragging = false;
+            let currentAngleRad = 0; // NEW: Global state for angle
 
             // Tab Controls
             trigTabButtons.forEach(btn => {
                 btn.addEventListener('click', () => {
                     currentTrigTab = btn.dataset.tab;
-                    // Update button styles
                     trigTabButtons.forEach(b => {
                         b.classList.toggle('border-b-2', b.dataset.tab === currentTrigTab);
                         b.classList.toggle('border-blue-500', b.dataset.tab === currentTrigTab);
                         b.classList.toggle('text-white', b.dataset.tab === currentTrigTab);
                         b.classList.toggle('text-gray-400', b.dataset.tab !== currentTrigTab);
                     });
-                    // Show/hide content
-                    document.querySelectorAll('.trig-tab-content').forEach(content => {
-                        content.classList.toggle('hidden', content.id !== currentTrigTab);
-                    });
+                    document.querySelectorAll('.trig-tab-content').forEach(c => c.classList.toggle('hidden', c.id !== currentTrigTab));
+                    if (currentTrigTab === 'trig-unit-circle') {
+                        initTrigChart();
+                    }
                 });
             });
-            // Set default tab style
             document.querySelector('.trig-tab-btn[data-tab="trig-unit-circle"]')?.click();
 
             // --- Unit Circle Logic ---
-            const svg = document.getElementById('unit-circle-svg');
-            const handle = document.getElementById('unit-circle-handle');
-            const hyp = document.getElementById('unit-hypotenuse');
-            const opp = document.getElementById('unit-opposite');
-            const adj = document.getElementById('unit-adjacent');
-            
-            const radius = 120;
-            const center = 150;
-            let isDragging = false;
+            const svg = document.getElementById('unit-circle-svg'), handle = document.getElementById('unit-circle-handle');
+            const hyp = document.getElementById('unit-hypotenuse'), opp = document.getElementById('unit-opposite'), adj = document.getElementById('unit-adjacent');
+            const arc = document.getElementById('unit-angle-arc');
+            const sinLabel = document.getElementById('sin-label'), cosLabel = document.getElementById('cos-label');
+            const degInput = document.getElementById('uc-angle-deg-input'), radInput = document.getElementById('uc-angle-rad-input');
+            // const radius = 120, center = 150; // MOVED UP
+            // let ucIsDragging = false; // MOVED UP
+            // let currentAngleRad = 0; // NEW: Global state for angle // MOVED UP
 
-            svg.addEventListener('mousedown', (e) => { isDragging = true; updateUnitCircle(e); });
-            svg.addEventListener('mousemove', (e) => { if (isDragging) updateUnitCircle(e); });
-            svg.addEventListener('mouseup', () => isDragging = false);
-            svg.addEventListener('mouseleave', () => isDragging = false);
+            svg.addEventListener('mousedown', (e) => { ucIsDragging = true; updateUnitCircleFromMouse(e); });
+            svg.addEventListener('mousemove', (e) => { if (ucIsDragging) updateUnitCircleFromMouse(e); });
+            svg.addEventListener('mouseup', () => ucIsDragging = false);
+            svg.addEventListener('mouseleave', () => ucIsDragging = false);
+            svg.addEventListener('touchstart', (e) => { ucIsDragging = true; updateUnitCircleFromMouse(e.touches[0]); });
+            svg.addEventListener('touchmove', (e) => { if (ucIsDragging) { e.preventDefault(); updateUnitCircleFromMouse(e.touches[0]); } });
+            svg.addEventListener('touchend', () => ucIsDragging = false);
             
-            svg.addEventListener('touchstart', (e) => { isDragging = true; updateUnitCircle(e.touches[0]); });
-            svg.addEventListener('touchmove', (e) => { if (isDragging) { e.preventDefault(); updateUnitCircle(e.touches[0]); } });
-            svg.addEventListener('touchend', () => isDragging = false);
+            degInput.addEventListener('change', () => {
+                const deg = parseFloat(degInput.value);
+                const rad = deg * (Math.PI / 180);
+                updateUnitCircle(rad);
+            });
+            
+            radInput.addEventListener('change', () => {
+                try {
+                    const rad = math.evaluate(radInput.value.replace('pi', 'PI'));
+                    updateUnitCircle(rad);
+                } catch (e) {
+                    radInput.value = currentAngleRad.toFixed(2);
+                    console.error("Invalid radian expression");
+                }
+            });
 
-            function updateUnitCircle(e) {
+            function updateUnitCircleFromMouse(e) {
                 const rect = svg.getBoundingClientRect();
-                const x = e.clientX - rect.left - center;
-                const y = e.clientY - rect.top - center;
+                // Get mouse/touch position relative to SVG top-left
+                const svgX = e.clientX - rect.left;
+                const svgY = e.clientY - rect.top;
+                // Convert to SVG coordinate system (relative to center 150,150)
+                const x = svgX - center;
+                const y = svgY - center;
                 
                 let angle = Math.atan2(y, x);
-                
-                const handleX = radius * Math.cos(angle);
-                const handleY = radius * Math.sin(angle);
-                
-                handle.setAttribute('transform', `translate(${handleX}, ${handleY})`);
-                
-                // Update triangle lines
-                hyp.setAttribute('x2', handleX);
-                hyp.setAttribute('y2', handleY);
-                opp.setAttribute('x1', handleX);
-                opp.setAttribute('x2', handleX);
-                opp.setAttribute('y2', handleY);
-                adj.setAttribute('x2', handleX);
-                
-                // Update values
-                const cos = Math.cos(angle);
-                const sin = Math.sin(angle);
-                const tan = Math.tan(angle);
-                let deg = angle * (180 / Math.PI);
-                if (deg < 0) deg += 360; // Normalize to 0-360
-                
-                document.getElementById('uc-angle-deg').textContent = `${deg.toFixed(1)}°`;
-                document.getElementById('uc-angle-rad').textContent = angle.toFixed(2);
-                document.getElementById('uc-cos').textContent = cos.toFixed(3);
-                document.getElementById('uc-sin').textContent = sin.toFixed(3);
-                document.getElementById('uc-tan').textContent = tan.toFixed(3);
-
-                updateTrigChart(angle);
+                updateUnitCircle(angle);
             }
 
-            function updateTrigChart(angle) {
-                const ctx = document.getElementById('trig-chart').getContext('2d');
-                if (!trigChart) {
-                    const sinData = [], cosData = [];
-                    for (let x = -2 * Math.PI; x <= 2 * Math.PI; x += 0.1) {
-                        sinData.push({x: x, y: Math.sin(x)});
-                        cosData.push({x: x, y: Math.cos(x)});
-                    }
-                    trigChart = new Chart(ctx, {
-                        type: 'scatter',
-                        data: {
-                            datasets: [
-                                { label: 'sin(x)', data: sinData, showLine: true, borderColor: 'rgb(52, 211, 153)', pointRadius: 0 },
-                                { label: 'cos(x)', data: cosData, showLine: true, borderColor: 'rgb(96, 165, 250)', pointRadius: 0 }
-                            ]
-                        },
-                        options: chartOptions2D()
-                    });
-                }
+            // NEW: Master update function
+            function updateUnitCircle(angleRad) {
+                currentAngleRad = angleRad; // Store the state
                 
-                // Update or add annotation line
+                // --- Update SVG Elements ---
+                const handleX = radius * Math.cos(angleRad);
+                const handleY = radius * Math.sin(angleRad);
+                
+                handle.setAttribute('transform', `translate(${handleX}, ${handleY})`);
+                hyp.setAttribute('x2', handleX); hyp.setAttribute('y2', handleY);
+                opp.setAttribute('x1', handleX); opp.setAttribute('x2', handleX); opp.setAttribute('y2', handleY);
+                adj.setAttribute('x2', handleX);
+
+                // Update arc path
+                const largeArcFlag = (angleRad > Math.PI || angleRad < -Math.PI) ? (angleRad > 0 ? 1 : 0) : (angleRad > 0 ? 0 : 1);
+                // Correct sweep flag: 1 for positive angle, 0 for negative
+                const sweepFlag = angleRad > 0 ? 1 : 0;
+                const arcD = `M ${radius} 0 A ${radius} ${radius} 0 ${largeArcFlag} ${sweepFlag} ${handleX} ${handleY} L 0 0 Z`;
+                arc.setAttribute('d', arcD);
+
+                // Update text labels
+                cosLabel.setAttribute('x', handleX / 2);
+                cosLabel.setAttribute('y', 12);
+                sinLabel.setAttribute('x', handleX + 5);
+                sinLabel.setAttribute('y', handleY / 2);
+
+                // --- Update Trig Values ---
+                const cos = Math.cos(angleRad);
+                const sin = Math.sin(angleRad);
+                const tan = Math.tan(angleRad);
+                let deg = angleRad * (180 / Math.PI);
+                
+                // Normalize degrees to 0-360
+                const normalizedDeg = ((deg % 360) + 360) % 360;
+
+                // --- Update Text and Input Fields ---
+                degInput.value = normalizedDeg.toFixed(1);
+                radInput.value = angleRad.toFixed(3); // Update input field
+                
+                document.getElementById('uc-cos').textContent = cos.toFixed(3);
+                document.getElementById('uc-sin').textContent = sin.toFixed(3);
+                
+                // Handle tan(undefined)
+                if (Math.abs(cos) < 1e-9) {
+                    document.getElementById('uc-tan').textContent = "Undefined";
+                } else {
+                    document.getElementById('uc-tan').textContent = tan.toFixed(3);
+                }
+
+                // Update the separate sine/cosine chart
+                updateTrigChart(angleRad);
+            }
+            
+            function initTrigChart() {
+                if (trigChart) return; // Already initialized
+                
+                const ctx = document.getElementById('trig-chart').getContext('2d');
+                const sinData = [], cosData = [];
+                for (let x = -2 * Math.PI; x <= 2 * Math.PI; x += 0.1) { 
+                    sinData.push({x, y: Math.sin(x)}); 
+                    cosData.push({x, y: Math.cos(x)}); 
+                }
+                trigChart = new Chart(ctx, { 
+                    type: 'scatter', 
+                    data: { datasets: [
+                        { label: 'sin(x)', data: sinData, showLine: true, borderColor: 'rgb(52, 211, 153)', pointRadius: 0, borderWidth: 2 },
+                        { label: 'cos(x)', data: cosData, showLine: true, borderColor: 'rgb(96, 165, 250)', pointRadius: 0, borderWidth: 2 }
+                    ]}, 
+                    options: chartOptions2D() 
+                });
+                // Initialize with default angle
+                updateUnitCircle(0);
+            }
+            
+            function updateTrigChart(angle) {
+                if (!trigChart) initTrigChart();
+                
+                // Ensure annotations plugin is registered if using one
+                // For simplicity, we'll redraw a vertical line manually if no plugin
+                
+                // Simple vertical line annotation
                 trigChart.options.plugins.annotation = {
                     annotations: {
                         line1: {
@@ -1732,143 +1861,220 @@
                             xMin: angle,
                             xMax: angle,
                             borderColor: 'rgb(248, 113, 113)',
-                            borderWidth: 2
+                            borderWidth: 2,
+                            label: {
+                                content: `θ = ${angle.toFixed(2)}`,
+                                enabled: true,
+                                position: 'top',
+                                backgroundColor: 'rgba(248, 113, 113, 0.8)'
+                            }
                         }
                     }
                 };
                 trigChart.update();
             }
-            updateUnitCircle({ clientX: center + radius, clientY: center }); // Init
+            // Init
+            initTrigChart();
+            updateUnitCircle(0);
             
             // --- Triangle Solver Logic ---
             solveTriangleBtn.addEventListener('click', () => {
-                // Get values
-                let a = parseFloat(document.getElementById('tri-a').value);
-                let b = parseFloat(document.getElementById('tri-b').value);
-                let c = parseFloat(document.getElementById('tri-c').value);
-                let A = parseFloat(document.getElementById('tri-A').value);
-                let B = parseFloat(document.getElementById('tri-B').value);
-                let C = parseFloat(document.getElementById('tri-C').value);
-
-                const solution = document.getElementById('triangle-solution');
-                const steps = document.getElementById('triangle-steps');
+                let a = parseFloat(document.getElementById('tri-a').value), b = parseFloat(document.getElementById('tri-b').value), c = parseFloat(document.getElementById('tri-c').value);
+                let A = parseFloat(document.getElementById('tri-A').value), B = parseFloat(document.getElementById('tri-B').value), C = parseFloat(document.getElementById('tri-C').value);
+                const sol = document.getElementById('triangle-solution'), steps = document.getElementById('triangle-steps');
                 steps.innerHTML = '';
-                
-                const toRad = (deg) => deg * Math.PI / 180;
-                const toDeg = (rad) => rad * 180 / Math.PI;
-
+                const toRad = (deg) => deg * Math.PI / 180, toDeg = (rad) => rad * 180 / Math.PI;
                 try {
-                    // Logic for SSS
                     if (!isNaN(a) && !isNaN(b) && !isNaN(c)) {
-                        steps.innerHTML += 'Solving (SSS):\n';
-                        A = toDeg(Math.acos((b*b + c*c - a*a) / (2*b*c)));
-                        steps.innerHTML += `1. Find A: cos(A) = (b²+c²-a²)/(2bc) => A = ${A.toFixed(2)}°\n`;
-                        B = toDeg(Math.acos((a*a + c*c - b*b) / (2*a*c)));
-                        steps.innerHTML += `2. Find B: cos(B) = (a²+c²-b²)/(2ac) => B = ${B.toFixed(2)}°\n`;
-                        C = 180 - A - B;
-                        steps.innerHTML += `3. Find C: 180° - A - B => C = ${C.toFixed(2)}°\n`;
-                    }
-                    // Logic for SAS
-                    else if (!isNaN(a) && !isNaN(B) && !isNaN(c)) {
-                        steps.innerHTML += 'Solving (SAS):\n';
-                        B_rad = toRad(B); // Keep original B
-                        b = Math.sqrt(a*a + c*c - 2*a*c*Math.cos(B_rad));
-                        steps.innerHTML += `1. Find b (Law of Cosines): b² = a²+c²-2ac*cos(B) => b = ${b.toFixed(2)}\n`;
-                        A = toDeg(Math.asin(a * Math.sin(B_rad) / b));
-                        steps.innerHTML += `2. Find A (Law of Sines): sin(A)/a = sin(B)/b => A = ${A.toFixed(2)}°\n`;
-                        C = 180 - B - A; // Use original B
-                        steps.innerHTML += `3. Find C: 180° - A - B => C = ${C.toFixed(2)}°\n`;
-                    }
-                    // (Add other cases like ASA, AAS, etc. here)
-                    else {
-                        throw new Error('Not enough information or case not implemented (try SSS or SAS).');
-                    }
-                    
-                    if (A+B+C > 180.1 || A+B+C < 179.9) throw new Error('Invalid triangle (angles do not sum to 180).');
-                    
-                    solution.innerHTML = `
-                        <b>Side a:</b> ${a.toFixed(2)} &nbsp; <b>Angle A:</b> ${A.toFixed(2)}° <br>
-                        <b>Side b:</b> ${b.toFixed(2)} &nbsp; <b>Angle B:</b> ${B.toFixed(2)}° <br>
-                        <b>Side c:</b> ${c.toFixed(2)} &nbsp; <b>Angle C:</b> ${C.toFixed(2)}°
-                    `;
-                    explainTrigBtn.classList.remove('hidden'); // NEW
-
+                        steps.innerHTML = 'Solving (SSS):\n';
+                        A = toDeg(Math.acos((b*b + c*c - a*a) / (2*b*c))); steps.innerHTML += `1. Find A... A = ${A.toFixed(2)}°\n`;
+                        B = toDeg(Math.acos((a*a + c*c - b*b) / (2*a*c))); steps.innerHTML += `2. Find B... B = ${B.toFixed(2)}°\n`;
+                        C = 180 - A - B; steps.innerHTML += `3. Find C... C = ${C.toFixed(2)}°\n`;
+                    } else if (!isNaN(a) && !isNaN(B) && !isNaN(c)) {
+                        steps.innerHTML = 'Solving (SAS):\n';
+                        const B_rad = toRad(B);
+                        b = Math.sqrt(a*a + c*c - 2*a*c*Math.cos(B_rad)); steps.innerHTML += `1. Find b... b = ${b.toFixed(2)}\n`;
+                        A = toDeg(Math.asin(a * Math.sin(B_rad) / b)); steps.innerHTML += `2. Find A... A = ${A.toFixed(2)}°\n`;
+                        C = 180 - B - A; steps.innerHTML += `3. Find C... C = ${C.toFixed(2)}°\n`;
+                    } else throw new Error('Case not implemented (try SSS or SAS).');
+                    if (A+B+C > 180.1 || A+B+C < 179.9) throw new Error('Invalid triangle (angles!=180).');
+                    sol.innerHTML = `<b>a:</b> ${a.toFixed(2)} <b>A:</b> ${A.toFixed(2)}° <br><b>b:</b> ${b.toFixed(2)} <b>B:</b> ${B.toFixed(2)}° <br><b>c:</b> ${c.toFixed(2)} <b>C:</b> ${C.toFixed(2)}°`;
+                    explainTrigBtn.classList.remove('hidden');
                 } catch (err) {
-                    solution.textContent = 'Could not solve triangle.';
-                    steps.textContent = err.message;
-                    explainTrigBtn.classList.add('hidden'); // NEW
+                    sol.textContent = 'Could not solve triangle.'; steps.textContent = err.message;
+                    explainTrigBtn.classList.add('hidden');
                 }
             });
 
             // ===================================================================
-            // NEW MODULE 4: 3D FUNCTION GRAPHER
+            // NEW MODULE 4: VECTOR LAB
+            // ===================================================================
+            const vectorCalcBtn = document.getElementById('vector-calculate-btn');
+            const vectorResults = document.getElementById('vector-results');
+            const vectorContainer = document.getElementById('vector-canvas');
+            
+            function initThreeJSVectorLab() {
+                if (vectorScene) return; // Already initialized
+
+                vectorScene = new THREE.Scene();
+                vectorCamera = new THREE.PerspectiveCamera(75, vectorContainer.clientWidth / vectorContainer.clientHeight, 0.1, 1000);
+                vectorRenderer = new THREE.WebGLRenderer({ antialias: true });
+                vectorRenderer.setSize(vectorContainer.clientWidth, vectorContainer.clientHeight);
+                vectorContainer.innerHTML = ''; // Clear
+                vectorContainer.appendChild(vectorRenderer.domElement);
+
+                vectorGroup = new THREE.Group();
+                vectorScene.add(vectorGroup);
+                
+                // UPDATED: Set camera position further back to see all vectors
+                vectorCamera.position.z = 10;
+                vectorCamera.position.y = 10;
+                vectorCamera.position.x = 10;
+                vectorCamera.lookAt(0, 0, 0);
+
+                const axesHelper = new THREE.AxesHelper(5);
+                vectorScene.add(axesHelper);
+                const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 0x444444);
+                vectorScene.add(gridHelper);
+
+                // Mouse controls
+                let isDragging = false, prevPos = { x: 0, y: 0 };
+                vectorContainer.addEventListener('mousedown', (e) => isDragging = true);
+                vectorContainer.addEventListener('mouseup', () => isDragging = false);
+                vectorContainer.addEventListener('mouseleave', () => isDragging = false);
+                vectorContainer.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    vectorGroup.rotation.y += (e.offsetX - prevPos.x) * 0.01;
+                    vectorGroup.rotation.x += (e.offsetY - prevPos.y) * 0.01;
+                    prevPos = { x: e.offsetX, y: e.offsetY };
+                });
+                vectorContainer.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    vectorCamera.position.z = Math.max(2, Math.min(20, vectorCamera.position.z + e.deltaY * 0.01));
+                });
+                new ResizeObserver(() => {
+                    if (!vectorRenderer || !vectorCamera) return;
+                    vectorCamera.aspect = vectorContainer.clientWidth / vectorContainer.clientHeight;
+                    vectorCamera.updateProjectionMatrix();
+                    vectorRenderer.setSize(vectorContainer.clientWidth, vectorContainer.clientHeight);
+                }).observe(vectorContainer);
+
+                animateVectorLab();
+                vectorCalcBtn.click(); // Run default
+            }
+
+            function animateVectorLab() {
+                if (!vectorRenderer) return;
+                requestAnimationFrame(animateVectorLab);
+                vectorRenderer.render(vectorScene, vectorCamera);
+            }
+
+            function visualizeVectors(v1, v2, crossProduct) {
+                if (!vectorScene) initThreeJSVectorLab();
+                
+                // Clear old vectors
+                while (vectorGroup.children.length > 0) vectorGroup.remove(vectorGroup.children[0]);
+
+                const origin = new THREE.Vector3(0, 0, 0);
+                
+                // Vector 1 (Blue)
+                const v1_three = new THREE.Vector3(v1[0], v1[1], v1[2]);
+                // UPDATED: Removed fixed head size to use proportional defaults
+                vectorGroup.add(new THREE.ArrowHelper(v1_three.clone().normalize(), origin, v1_three.length(), 0x3b82f6));
+                
+                // Vector 2 (Green)
+                const v2_three = new THREE.Vector3(v2[0], v2[1], v2[2]);
+                // UPDATED: Removed fixed head size to use proportional defaults
+                vectorGroup.add(new THREE.ArrowHelper(v2_three.clone().normalize(), origin, v2_three.length(), 0x22c55e));
+
+                // Cross Product (Red)
+                const cross_three = new THREE.Vector3(crossProduct[0], crossProduct[1], crossProduct[2]);
+                // UPDATED: Removed fixed head size to use proportional defaults
+                vectorGroup.add(new THREE.ArrowHelper(cross_three.clone().normalize(), origin, cross_three.length(), 0xef4444));
+
+                // NEW: Add "main points" (spheres) at the tips of the vectors
+                const pointGeo = new THREE.SphereGeometry(0.15, 16, 16); // 0.15 radius sphere
+                
+                const v1_tip = new THREE.Mesh(pointGeo, new THREE.MeshBasicMaterial({ color: 0x3b82f6 }));
+                v1_tip.position.copy(v1_three);
+                vectorGroup.add(v1_tip);
+
+                const v2_tip = new THREE.Mesh(pointGeo, new THREE.MeshBasicMaterial({ color: 0x22c55e }));
+                v2_tip.position.copy(v2_three);
+                vectorGroup.add(v2_tip);
+
+                const cross_tip = new THREE.Mesh(pointGeo, new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+                cross_tip.position.copy(cross_three);
+                vectorGroup.add(cross_tip);
+            }
+
+            vectorCalcBtn.addEventListener('click', () => {
+                try {
+                    const v1 = ['v1_x', 'v1_y', 'v1_z'].map(id => parseFloat(document.getElementById(id).value));
+                    const v2 = ['v2_x', 'v2_y', 'v2_z'].map(id => parseFloat(document.getElementById(id).value));
+                    
+                    const dot = math.dot(v1, v2);
+                    const cross = math.cross(v1, v2);
+                    const magV1 = math.norm(v1);
+                    const magV2 = math.norm(v2);
+                    const angleRad = Math.acos(math.dot(v1, v2) / (magV1 * magV2));
+                    const angleDeg = angleRad * 180 / Math.PI;
+
+                    vectorResults.innerHTML = `
+v1: [${v1.join(', ')}]
+v2: [${v2.join(', ')}]
+---------------------
+Dot Product (v1 . v2): ${math.format(dot, 4)}
+Cross Product (v1 x v2): [${cross.map(v => math.format(v, 4)).join(', ')}]
+Magnitude |v1|: ${math.format(magV1, 4)}
+Magnitude |v2|: ${math.format(magV2, 4)}
+Angle between: ${math.format(angleDeg, 2)}° (${math.format(angleRad, 3)} rad)
+`;
+                    visualizeVectors(v1, v2, cross);
+                } catch (err) {
+                    vectorResults.textContent = `Error: ${err.message}`;
+                }
+            });
+
+
+            // ===================================================================
+            // MODULE 5: 3D FUNCTION GRAPHER
             // ===================================================================
             const graph3DBtn = document.getElementById('graph-3d-btn');
             const graph3DError = document.getElementById('graph-3d-error');
             const grapherContainer = document.getElementById('three-grapher-canvas');
+            const aiAnalyze3DBtn = document.getElementById('ai-analyze-3d-btn'); // NEW
+            // NEW: Mode toggle buttons
+            const explicitBtn = document.getElementById('grapher-mode-explicit');
+            const parametricBtn = document.getElementById('grapher-mode-parametric');
+            const explicitInputs = document.getElementById('explicit-inputs');
+            const parametricInputs = document.getElementById('parametric-inputs');
 
-            function initThreeJSGrapher() {
-                if (grapherScene) return; // Already initialized
+            explicitBtn.addEventListener('click', () => {
+                grapherMode = 'explicit';
+                explicitBtn.classList.add('tab-btn-active');
+                explicitBtn.classList.remove('tab-btn-inactive');
+                parametricBtn.classList.add('tab-btn-inactive');
+                parametricBtn.classList.remove('tab-btn-active');
+                explicitInputs.classList.remove('hidden');
+                parametricInputs.classList.add('hidden');
+                aiAnalyze3DBtn.classList.remove('hidden'); // Show analyze button
+            });
+            parametricBtn.addEventListener('click', () => {
+                grapherMode = 'parametric';
+                parametricBtn.classList.add('tab-btn-active');
+                parametricBtn.classList.remove('tab-btn-inactive');
+                explicitBtn.classList.add('tab-btn-inactive');
+                explicitBtn.classList.remove('tab-btn-active');
+                parametricInputs.classList.remove('hidden');
+                explicitInputs.classList.add('hidden');
+                aiAnalyze3DBtn.classList.add('hidden'); // Hide analyze button
+                sendUpdateToFirestore(); // NEW: Sync state change
+            });
 
-                grapherScene = new THREE.Scene();
-                grapherCamera = new THREE.PerspectiveCamera(75, grapherContainer.clientWidth / grapherContainer.clientHeight, 0.1, 1000);
-                grapherRenderer = new THREE.WebGLRenderer({ antialias: true });
 
-                grapherRenderer.setSize(grapherContainer.clientWidth, grapherContainer.clientHeight);
-                grapherContainer.innerHTML = ''; // Clear container
-                grapherContainer.appendChild(grapherRenderer.domElement);
+            // --- START FIX: Re-ordering functions ---
 
-                grapherCamera.position.z = 15;
-                grapherCamera.position.y = 10;
-                
-                const axesHelper = new THREE.AxesHelper(10);
-                grapherScene.add(axesHelper);
-
-                // Add grid helper
-                const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x444444);
-                grapherScene.add(gridHelper);
-
-                // Mouse controls
-                let isDragging = false;
-                let previousMousePosition = { x: 0, y: 0 };
-
-                grapherContainer.addEventListener('mousedown', (e) => isDragging = true);
-                grapherContainer.addEventListener('mouseup', (e) => isDragging = false);
-                grapherContainer.addEventListener('mouseleave', (e) => isDragging = false);
-                grapherContainer.addEventListener('mousemove', (e) => {
-                    if (!isDragging) return;
-                    const deltaMove = {
-                        x: e.offsetX - previousMousePosition.x,
-                        y: e.offsetY - previousMousePosition.y
-                    };
-                    
-                    if(grapherMesh) {
-                        grapherMesh.rotation.y += deltaMove.x * 0.01;
-                        grapherMesh.rotation.x += deltaMove.y * 0.01;
-                    }
-                    
-                    previousMousePosition = { x: e.offsetX, y: e.offsetY };
-                });
-                
-                // Scroll to zoom
-                grapherContainer.addEventListener('wheel', (e) => {
-                    e.preventDefault();
-                    grapherCamera.position.z += e.deltaY * 0.01;
-                    grapherCamera.position.z = Math.max(5, Math.min(50, grapherCamera.position.z));
-                });
-
-                // Handle resize
-                new ResizeObserver(() => {
-                    if (!grapherRenderer || !grapherCamera) return;
-                    grapherCamera.aspect = grapherContainer.clientWidth / grapherContainer.clientHeight;
-                    grapherCamera.updateProjectionMatrix();
-                    grapherRenderer.setSize(grapherContainer.clientWidth, grapherContainer.clientHeight);
-                }).observe(grapherContainer);
-
-                animateThreeJSGrapher();
-                update3DGraph(); // Run default
-            }
-            
             function animateThreeJSGrapher() {
                 if (!grapherRenderer) return;
                 requestAnimationFrame(animateThreeJSGrapher);
@@ -1877,17 +2083,8 @@
 
             function update3DGraph() {
                 if (!grapherScene) initThreeJSGrapher();
-                
                 graph3DError.textContent = '';
-                const fx = document.getElementById('3d-function').value;
-                let code;
-                try {
-                    code = math.parse(fx).compile();
-                } catch (e) {
-                    graph3DError.textContent = `Error parsing function: ${e.message}`;
-                    return;
-                }
-
+                
                 // Remove old mesh
                 if (grapherMesh) {
                     grapherScene.remove(grapherMesh);
@@ -1895,54 +2092,130 @@
                     grapherMesh.material.dispose();
                 }
 
-                const range = 10;
-                const segments = 50;
-                const geometry = new THREE.PlaneGeometry(range * 2, range * 2, segments, segments);
-                
-                // Deform the plane
-                const vertices = geometry.attributes.position.array;
-                for (let i = 0, j = 0; i < vertices.length; i += 3) {
-                    const x = vertices[i];
-                    const y = vertices[i + 1];
-                    let z = 0;
-                    try {
-                        z = code.evaluate({ x: x, y: y });
-                    } catch (e) { /* ignore errors, z remains 0 */ }
+                try {
+                    let geometry;
+                    if (grapherMode === 'explicit') {
+                        // --- EXPLICIT LOGIC z = f(x, y) ---
+                        const fx = document.getElementById('3d-function').value;
+                        const code = math.parse(fx).compile();
+                        const range = 10, segments = 50;
+                        geometry = new THREE.PlaneGeometry(range * 2, range * 2, segments, segments);
+                        const vertices = geometry.attributes.position.array;
+                        for (let i = 0; i < vertices.length; i += 3) {
+                            const x = vertices[i], y = vertices[i + 1];
+                            let z = 0;
+                            try { z = code.evaluate({ x, y }); } catch (e) {}
+                            if (!isFinite(z)) z = 0;
+                            vertices[i + 2] = z;
+                        }
+                        geometry.computeVertexNormals();
+                        geometry.rotateX(-Math.PI / 2); // Orient plane
+                    } else {
+                        // --- PARAMETRIC LOGIC (x,y,z)(u,v) ---
+                        const xFunc = math.parse(document.getElementById('3d-func-x').value).compile();
+                        const yFunc = math.parse(document.getElementById('3d-func-y').value).compile();
+                        const zFunc = math.parse(document.getElementById('3d-func-z').value).compile();
+                        
+                        const parametricFunction = (u, v, target) => {
+                            const scope = { u, v, PI: Math.PI };
+                            let x = 0, y = 0, z = 0;
+                            try { x = xFunc.evaluate(scope); } catch(e) {}
+                            try { y = yFunc.evaluate(scope); } catch(e) {}
+                            try { z = zFunc.evaluate(scope); } catch(e) {}
+                            target.set(x, y, z);
+                        };
+                        
+                        geometry = new THREE.ParametricGeometry(parametricFunction, 50, 50);
+                    }
                     
-                    if (!isFinite(z)) z = 0; // Handle
+                    const material = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
+                    grapherMesh = new THREE.Mesh(geometry, material);
+                    grapherScene.add(grapherMesh);
+                    grapherCamera.lookAt(0, 0, 0);
                     
-                    vertices[i + 2] = z; // z-coordinate
+                } catch (e) {
+                    graph3DError.textContent = `Error: ${e.message}`;
                 }
-                geometry.computeVertexNormals(); // Recalculate normals for correct lighting
-                
-                const material = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
-                // const material = new THREE.MeshStandardMaterial({ color: 0x3b82f6, side: THREE.DoubleSide, wireframe: true });
-                
-                grapherMesh = new THREE.Mesh(geometry, material);
-                grapherMesh.rotation.x = -Math.PI / 2; // Orient plane to be flat
-                grapherScene.add(grapherMesh);
-                
-                // Center camera
-                grapherCamera.lookAt(grapherScene.position);
             }
+
+            function initThreeJSGrapher() {
+                if (grapherScene) return; // Already initialized
+                grapherScene = new THREE.Scene();
+                grapherCamera = new THREE.PerspectiveCamera(75, grapherContainer.clientWidth / grapherContainer.clientHeight, 0.1, 1000);
+                grapherRenderer = new THREE.WebGLRenderer({ antialias: true });
+                grapherRenderer.setSize(grapherContainer.clientWidth, grapherContainer.clientHeight);
+                grapherContainer.innerHTML = ''; // Clear
+                grapherContainer.appendChild(grapherRenderer.domElement);
+                grapherCamera.position.set(10, 10, 10);
+                grapherCamera.lookAt(0, 0, 0);
+                const axesHelper = new THREE.AxesHelper(10);
+                grapherScene.add(axesHelper);
+                const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x444444);
+                grapherScene.add(gridHelper);
+                let isDragging = false, prevPos = { x: 0, y: 0 };
+                grapherContainer.addEventListener('mousedown', (e) => isDragging = true);
+                grapherContainer.addEventListener('mouseup', () => isDragging = false);
+                grapherContainer.addEventListener('mouseleave', () => isDragging = false);
+                grapherContainer.addEventListener('mousemove', (e) => {
+                    if (!isDragging || !grapherMesh) return;
+                    grapherMesh.rotation.y += (e.offsetX - prevPos.x) * 0.01;
+                    grapherMesh.rotation.x += (e.offsetY - prevPos.y) * 0.01;
+                    prevPos = { x: e.offsetX, y: e.offsetY };
+
+                    // NEW: Throttle camera sync
+                    const now = Date.now();
+                    if (now - lastCameraUpdate > DEBOUNCE_TIME) {
+                        const cameraState = {
+                            position: grapherCamera.position.toArray(),
+                            rotation: [grapherMesh.rotation.x, grapherMesh.rotation.y, grapherMesh.rotation.z]
+                        };
+                        sendUpdateToFirestore(cameraState);
+                        lastCameraUpdate = now;
+                    }
+                });
+                grapherContainer.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    grapherCamera.position.z = Math.max(5, Math.min(50, grapherCamera.position.z + e.deltaY * 0.01));
+
+                    // NEW: Throttle camera sync
+                    const now = Date.now();
+                    if (now - lastCameraUpdate > DEBOUNCE_TIME) {
+                        const cameraState = {
+                            position: grapherCamera.position.toArray(),
+                            rotation: [grapherMesh.rotation.x, grapherMesh.rotation.y, grapherMesh.rotation.z]
+                        };
+                        sendUpdateToFirestore(cameraState);
+                        lastCameraUpdate = now;
+                    }
+                });
+                new ResizeObserver(() => {
+                    if (!grapherRenderer || !grapherCamera) return;
+                    grapherCamera.aspect = grapherContainer.clientWidth / grapherContainer.clientHeight;
+                    grapherCamera.updateProjectionMatrix();
+                    grapherRenderer.setSize(grapherContainer.clientWidth, grapherContainer.clientHeight);
+                }).observe(grapherContainer);
+                animateThreeJSGrapher();
+                update3DGraph(); // Run default
+            }
+
+            // --- END FIX ---
             
-            graph3DBtn.addEventListener('click', update3DGraph);
+            graph3DBtn.addEventListener('click', () => {
+                update3DGraph();
+                sendUpdateToFirestore(); // NEW: Sync state change
+            });
 
 
             // ===================================================================
-            // MODULE 5: AI MATH TUTOR
+            // MODULE 6: AI MATH TUTOR
             // ===================================================================
             const aiSolveBtn = document.getElementById('ai-solve-btn');
             const aiProblemInput = document.getElementById('ai-problem-input');
             const aiSolution = document.getElementById('ai-solution');
             const aiLoader = document.getElementById('ai-loader');
-            
-            // --- FIX START ---
-            // Re-adding missing variables and elements from previous version
             const aiImageUpload = document.getElementById('ai-image-upload');
             const aiClearBtn = document.getElementById('ai-clear-btn');
             const imagePreviewContainer = document.getElementById('image-preview-container');
-            
             let aiChatHistory = [];
             let uploadedImageBase64 = null;
             let uploadedMimeType = null;
@@ -1951,24 +2224,19 @@
     1.  Identify the type of problem (e.g., algebra, calculus, trigonometry, etc.).
     2.  Provide a clear, detailed, step-by-step solution.
     3.  Format the solution for easy reading.
-    4.  **Crucially**: Use LaTeX for all mathematical notation. Enclose inline math in single dollar signs (e.g., \\(f(x) = x^2\\)) and block-level equations in double dollar signs (e.g., $$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$).`; // FIX: Updated prompt text
-
-            // Re-adding missing function
+    4.  **Crucially**: Use LaTeX for all mathematical notation. Enclose inline math in single dollar signs (e.g., \\(f(x) = x^2\\)) and block-level equations in double dollar signs (e.g., $$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$).`;
+            
             function clearUpload() {
                 uploadedImageBase64 = null;
                 uploadedMimeType = null;
                 imagePreviewContainer.innerHTML = '';
-                aiImageUpload.value = null; // Reset file input
+                aiImageUpload.value = null;
             }
-            
-            // Re-adding missing function
             function initAiTutor() {
-                aiChatHistory = []; // System prompt is now sent separately
-                aiSolution.innerHTML = '<div class="model-message">Hello! I am your AI Math Tutor. Ask me any math question, or upload an image of a problem.</div>';
+                aiChatHistory = [];
+                aiSolution.innerHTML = '<div class="model-message">Hello! Ask me any math question.</div>';
                 clearUpload();
             }
-            
-            // Re-adding missing event listener
             aiImageUpload.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (file) {
@@ -1981,204 +2249,191 @@
                     reader.readAsDataURL(file);
                 }
             });
-
-            // Re-adding missing event listener
             aiClearBtn.addEventListener('click', () => {
                 aiProblemInput.value = '';
                 initAiTutor();
             });
-            // --- FIX END ---
-            
-            // NEW: Simple Markdown to HTML renderer
             function simpleMarkdown(text) {
                 return text
-                    // 1. Code blocks (```text```) - do this first
                     .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-                    // 2. Inline code (`text`)
                     .replace(/`(.*?)`/g, '<code>$1</code>')
-                    // 3. Bold (**text**)
                     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    // 4. Italic (*text*)
-                    // Use a regex that doesn't conflict with * (multiplication) in LaTeX
                     .replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
-                    // 5. Unordered lists (must be at start of line)
-                    .replace(/^\* (.*)/gm, '<li>$1</li>')
-                    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-                    .replace(/<\/ul>\s*<ul>/g, '') // Join consecutive
-                    // 6. Ordered lists (must be at start of line)
-                    .replace(/^\d+\. (.*)/gm, '<li>$1</li>')
-                    .replace(/(<li>.*<\/li>)/s, '<ol>$1</ol>')
-                    .replace(/<\/ol>\s*<ol>/g, ''); // Join consecutive
+                    .replace(/^\* (.*)/gm, '<li>$1</li>').replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>').replace(/<\/ul>\s*<ul>/g, '')
+                    .replace(/^\d+\. (.*)/gm, '<li>$1</li>').replace(/(<li>.*<\/li>)/s, '<ol>$1</ol>').replace(/<\/ol>\s*<ol>/g, '');
             }
-            
-            // NEW: Append message to chat UI
             function appendChatMessage(role, content, isMarkdown = false) {
                 const messageDiv = document.createElement('div');
                 messageDiv.classList.add('chat-message', role === 'user' ? 'user-message' : 'model-message');
-                
-                if (isMarkdown) {
-                    messageDiv.innerHTML = simpleMarkdown(content);
-                } else {
-                    messageDiv.innerHTML = content; // User message HTML is pre-formatted
-                }
-                
+                messageDiv.innerHTML = isMarkdown ? simpleMarkdown(content) : content;
                 aiSolution.appendChild(messageDiv);
-                aiSolution.scrollTop = aiSolution.scrollHeight; // Auto-scroll to bottom
+                aiSolution.scrollTop = aiSolution.scrollHeight;
             }
+            // End re-added functions
 
-            // UPDATED: Renamed to handleUserChatSubmit
             aiSolveBtn.addEventListener('click', () => {
                 const userQuery = aiProblemInput.value;
-                if (!userQuery.trim() && !uploadedImageBase64) {
-                    // Don't send empty message
-                    return;
-                }
-                
-                // 1. Construct user message for UI
-                let userMessageHTML = `${userQuery}`; // Just the text
-                if (uploadedImageBase64) {
-                    // Let pre-wrap handle the newline
-                    userMessageHTML += `\n<img src="${uploadedImageBase64}" alt="User upload" class="user-message-image">`;
-                }
-                appendChatMessage('user', userMessageHTML, false); // User message is NOT markdown
-
-                // 2. Construct user message for API
+                if (!userQuery.trim() && !uploadedImageBase64) return;
+                let userMessageHTML = `${userQuery}`;
+                if (uploadedImageBase64) userMessageHTML += `\n<img src="${uploadedImageBase64}" alt="User upload">`;
+                appendChatMessage('user', userMessageHTML, false);
                 const userParts = [{ text: userQuery }];
-                if (uploadedImageBase64) {
-                    userParts.push({
-                        inlineData: {
-                            mimeType: uploadedMimeType,
-                            data: uploadedImageBase64.split(',')[1] // Remove base64 prefix
-                        }
-                    });
-                }
-                
-                // 3. Add to history
+                if (uploadedImageBase64) userParts.push({ inlineData: { mimeType: uploadedMimeType, data: uploadedImageBase64.split(',')[1] } });
                 aiChatHistory.push({ role: 'user', parts: userParts });
-                
-                // 4. Clear inputs
-                aiProblemInput.value = '';
-                clearUpload();
-                
-                // 5. Call API
+                aiProblemInput.value = ''; clearUpload();
                 solveWithGemini();
             });
 
-            // UPDATED: Now reads from chat history
             async function solveWithGemini() {
                 aiLoader.classList.remove('hidden');
-                
-                // UPDATED: Set API key as requested
-                const apiKey = "AIzaSyCuyAFrMmIotaXpSXD2iWnJqeIU3T3dVxk";
+                // Use an empty API key, as it will be provided by the environment
+                const apiKey = ""; 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-
-                const payload = {
-                    contents: aiChatHistory, // Send the whole chat history
-                    systemInstruction: {
-                        parts: [{ text: systemPrompt }]
-                    },
-                };
-
+                const payload = { contents: aiChatHistory, systemInstruction: { parts: [{ text: systemPrompt }] } };
+                
                 try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(`API Error: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
-                    }
-
+                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) { const err = await response.json(); throw new Error(`API Error: ${err.error?.message || 'Unknown'}`); }
                     const result = await response.json();
                     
-                    if (result.candidates && result.candidates.length > 0) {
+                    if (result.candidates && result.candidates[0].content?.parts?.[0]?.text) {
                         const text = result.candidates[0].content.parts[0].text;
-                        
-                        // Add model response to history
-                        aiChatHistory.push({ role: 'model', parts: [{ text: text }] });
-                        
-                        // Append model response to UI
-                        appendChatMessage('model', text, true); // NEW: Set isMarkdown to true
-                        
-                        // Tell MathJax to typeset the new content
-                        if (window.MathJax) {
-                            MathJax.typesetPromise([aiSolution.lastChild]).catch((err) => console.warn('MathJax typesetting error:', err));
-                        }
+                        aiChatHistory.push({ role: 'model', parts: [{ text }] });
+                        appendChatMessage('model', text, true);
+                        if (window.MathJax) MathJax.typesetPromise([aiSolution.lastChild]).catch(console.warn);
                     } else {
-                        // Handle no response
-                        const errorText = 'Sorry, I could not find a solution. The response from the AI was empty.';
-                        appendChatMessage('model', errorText, false);
+                        appendChatMessage('model', 'Sorry, I could not find a solution.', false);
                     }
-
                 } catch (err) {
                     console.error('Error calling Gemini API:', err);
-                    const errorText = `An error occurred: ${err.message}. Please check the console for details.`;
-                    appendChatMessage('model', errorText, false);
+                    appendChatMessage('model', `An error occurred: ${err.message}`, false);
                 } finally {
                     aiLoader.classList.add('hidden');
-                    aiSolution.scrollTop = aiSolution.scrollHeight; // Scroll again
+                    aiSolution.scrollTop = aiSolution.scrollHeight;
                 }
             }
 
 
             // ===================================================================
-            // NEW: AI CONTEXT-AWARE BUTTONS
+            // AI CONTEXT-AWARE BUTTONS
             // ===================================================================
-            explainDerivativeBtn.addEventListener('click', () => {
-                const fx = document.getElementById('deriv-fx').textContent;
-                const fpx = document.getElementById('deriv-fpx').textContent;
-                
-                // FIX: $...$ to \(...\)
-                const prompt = `Please explain, step-by-step, how to find the derivative of:
+
+            // --- Helper function to send prompt to AI ---
+            function sendToAITutor(prompt) {
+                aiProblemInput.value = prompt;
+                if (currentModule !== 'ai-tutor') switchModule('ai-tutor');
+                aiSolveBtn.click();
+            }
+
+            // --- NEW: AI Analyzer Buttons ---
+            aiAnalyzeCalcBtn.addEventListener('click', () => {
+                const fx = calcFunctionInput.value;
+                if (!fx) return;
+                const prompt = `Please perform a full analysis of the function:
 \\(f(x) = ${fx}\\)
 
-My calculator says the answer is:
-\\(f'(x) = ${fpx}\\)
+I need to know its:
+1.  Domain and Range
+2.  x-intercepts and y-intercept
+3.  Critical points (maxima/minima)
+4.  Intervals of increase/decrease
+5.  Points of inflection
+6.  Intervals of concavity
+7.  Asymptotes (vertical, horizontal, slant), if any.
+`;
+                sendToAITutor(prompt);
+            });
+            
+            aiAnalyze3DBtn.addEventListener('click', () => {
+                // Only works for explicit functions
+                if (grapherMode !== 'explicit') {
+                    graph3DError.textContent = 'Analysis only works for explicit z = f(x, y) functions.';
+                    return;
+                }
+                const fxy = document.getElementById('3d-function').value;
+                if (!fxy) return;
+                const prompt = `Please perform a full analysis of the 3D function:
+\\(z = f(x, y) = ${fxy}\\)
 
-Please show me all the rules (like the power rule, chain rule, product rule, etc.) that are used to get this result.`;
-                
-                // UPDATED: Call the chat submit function instead
-                aiProblemInput.value = prompt;
-                if (currentModule !== 'ai-tutor') switchModule('ai-tutor'); // Switch to tutor
-                aiSolveBtn.click();
+I need to know its:
+1.  Domain and Range
+2.  Intercepts (x, y, and z)
+3.  Partial derivatives (\\(f_x\\) and \\(f_y\\))
+4.  Critical points (local maxima, minima, saddle points)
+`;
+                sendToAITutor(prompt);
+            });
+
+
+            // --- "Why" Buttons ---
+            explainDerivativeBtn.addEventListener('click', () => {
+                const prompt = `Please explain, step-by-step, how to find the derivative of:
+\\(f(x) = ${document.getElementById('deriv-fx').textContent}\\)
+My calculator says the answer is:
+\\(f'(x) = ${document.getElementById('deriv-fpx').textContent}\\)
+Please show me all the rules used.`;
+                sendToAITutor(prompt);
             });
             
             explainAlgebraBtn.addEventListener('click', () => {
-                const mode = algebraVarMode;
-                const solution = algebraSolution.textContent;
-                
-                const prompt = `I just solved a ${mode}-variable system of equations and got this solution:
-'${solution}'
-
-The method was called "Cramer's Rule". Can you please explain how Cramer's Rule works for a ${mode}x${mode} system? What are determinants and how are they used to find the solution?`;
-                
-                // UPDATED: Call the chat submit function instead
-                aiProblemInput.value = prompt;
-                if (currentModule !== 'ai-tutor') switchModule('ai-tutor'); // Switch to tutor
-                aiSolveBtn.click();
+                const prompt = `I just solved a ${algebraVarMode}-variable system...
+'${document.getElementById('algebra-solution').textContent}'
+...using "Cramer's Rule". Can you please explain how Cramer's Rule works for a ${algebraVarMode}x${algebraVarMode} system?`;
+                sendToAITutor(prompt);
             });
             
             explainTrigBtn.addEventListener('click', () => {
-                const steps = document.getElementById('triangle-steps').textContent;
-                
                 const prompt = `I just solved a triangle, and these were the steps:
 ---
-${steps}
+${document.getElementById('triangle-steps').textContent}
 ---
-Can you please explain the logic? What are the 'Law of Sines' and 'Law of Cosines', and how do I know which one to use based on the inputs (like SSS, SAS, ASA)?`;
-                
-                // UPDATED: Call the chat submit function instead
-                aiProblemInput.value = prompt;
-                if (currentModule !== 'ai-tutor') switchModule('ai-tutor'); // Switch to tutor
-                aiSolveBtn.click();
+Can you please explain the logic? What are the 'Law of Sines' and 'Law of Cosines', and how do I know which one to use?`;
+                sendToAITutor(prompt);
             });
 
+            explainPolyBtn.addEventListener('click', () => {
+                const prompt = `I'm trying to find the roots of the polynomial:
+\\(${document.getElementById('poly-a').value}x^3 + ${document.getElementById('poly-b').value}x^2 + ${document.getElementById('poly-c').value}x + ${document.getElementById('poly-d').value} = 0\\)
+My calculator gave me these roots:
+${document.getElementById('poly-steps').textContent}
+Can you please explain the steps to find these roots?`;
+                sendToAITutor(prompt);
+            });
+
+            explainMatrixBtn.addEventListener('click', () => {
+                const result = document.getElementById('matrix-result-scalar').textContent || "a matrix (see grid)";
+                const prompt = `I just performed a matrix operation ('${lastMatrixOp}') and got this result: ${result}.
+Can you please explain how this operation (${lastMatrixOp}) works in general for 3x3 matrices?`;
+                sendToAITutor(prompt);
+            });
+
+            explainIntegralBtn.addEventListener('click', () => {
+                const prompt = `I am approximating the integral of:
+\\(f(x) = ${calcFunctionInput.value}\\) from \\(a = ${document.getElementById('integral-a').value}\\) to \\(b = ${document.getElementById('integral-b').value}\\)
+Using \\(n = ${integralN.value}\\) rectangles, I got an area of:
+${document.getElementById('integral-area').textContent}
+Can you please explain how a (Midpoint) Riemann Sum is calculated?`;
+                sendToAITutor(prompt);
+            });
+
+            explainLimitBtn.addEventListener('click', () => {
+                const prompt = `I am trying to find the limit of \\(f(x) = ${calcFunctionInput.value}\\) as \\(x\\) approaches \\(${document.getElementById('limit-a').value}\\).
+The tables show the function approaching: ${document.getElementById('limit-value').textContent}
+Can you please explain what this limit means?`;
+                sendToAITutor(prompt);
+            });
+
+            // --- NEW: Collaboration Listeners ---
+            document.getElementById('start-share-btn').addEventListener('click', startNewShareSession);
+            document.getElementById('copy-link-btn').addEventListener('click', copyShareLink);
+            document.getElementById('leave-session-btn').addEventListener('click', leaveShareSession);
 
             // --- Final Initialization ---
-            switchModule('algebra'); // Start on algebra
-            initAiTutor(); // NEW: Initialize the AI chat
+            // Removed switchModule('algebra') here, it's now handled by the URL check or defaults
+            if (!currentSessionId) {
+                switchModule('algebra'); // Start on algebra if not joining a session
+            }
+            initAiTutor();
         });
     </script>
 </body>
