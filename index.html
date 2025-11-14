@@ -18,6 +18,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <!-- 5. MathJax (for LaTeX Rendering) -->
+    <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      }
+    };
+    </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <!-- NEW: Firebase SDKs -->
@@ -1703,6 +1711,13 @@
             const solveTriangleBtn = document.getElementById('solve-triangle');
             const explainTrigBtn = document.getElementById('explain-trig-btn');
 
+            // --- Unit Circle DOM Elements (Moved for initialization) ---
+            const svg = document.getElementById('unit-circle-svg'), handle = document.getElementById('unit-circle-handle');
+            const hyp = document.getElementById('unit-hypotenuse'), opp = document.getElementById('unit-opposite'), adj = document.getElementById('unit-adjacent');
+            const arc = document.getElementById('unit-angle-arc');
+            const sinLabel = document.getElementById('sin-label'), cosLabel = document.getElementById('cos-label');
+            const degInput = document.getElementById('uc-angle-deg-input'), radInput = document.getElementById('uc-angle-rad-input');
+            
             // --- Unit Circle Globals ---
             const radius = 120, center = 150; 
             let ucIsDragging = false;
@@ -1727,11 +1742,11 @@
             document.querySelector('.trig-tab-btn[data-tab="trig-unit-circle"]')?.click();
 
             // --- Unit Circle Logic ---
-            const svg = document.getElementById('unit-circle-svg'), handle = document.getElementById('unit-circle-handle');
-            const hyp = document.getElementById('unit-hypotenuse'), opp = document.getElementById('unit-opposite'), adj = document.getElementById('unit-adjacent');
-            const arc = document.getElementById('unit-angle-arc');
-            const sinLabel = document.getElementById('sin-label'), cosLabel = document.getElementById('cos-label');
-            const degInput = document.getElementById('uc-angle-deg-input'), radInput = document.getElementById('uc-angle-rad-input');
+            // const svg = document.getElementById('unit-circle-svg'), handle = document.getElementById('unit-circle-handle'); // MOVED UP
+            // const hyp = document.getElementById('unit-hypotenuse'), opp = document.getElementById('unit-opposite'), adj = document.getElementById('unit-adjacent'); // MOVED UP
+            // const arc = document.getElementById('unit-angle-arc'); // MOVED UP
+            // const sinLabel = document.getElementById('sin-label'), cosLabel = document.getElementById('cos-label'); // MOVED UP
+            // const degInput = document.getElementById('uc-angle-deg-input'), radInput = document.getElementById('uc-angle-rad-input'); // MOVED UP
             // const radius = 120, center = 150; // MOVED UP
             // let ucIsDragging = false; // MOVED UP
             // let currentAngleRad = 0; // NEW: Global state for angle // MOVED UP
@@ -2224,7 +2239,7 @@ Angle between: ${math.format(angleDeg, 2)}° (${math.format(angleRad, 3)} rad)
     1.  Identify the type of problem (e.g., algebra, calculus, trigonometry, etc.).
     2.  Provide a clear, detailed, step-by-step solution.
     3.  Format the solution for easy reading.
-    4.  **Crucially**: Use LaTeX for all mathematical notation. Enclose inline math in single dollar signs (e.g., \\(f(x) = x^2\\)) and block-level equations in double dollar signs (e.g., $$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$).`;
+    4.  **Crucially**: Use LaTeX for all mathematical notation. Enclose inline math in single dollar signs (e.g., $f(x) = x^2$) and block-level equations in double dollar signs (e.g., $$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$).`;
             
             function clearUpload() {
                 uploadedImageBase64 = null;
@@ -2286,8 +2301,8 @@ Angle between: ${math.format(angleDeg, 2)}° (${math.format(angleRad, 3)} rad)
 
             async function solveWithGemini() {
                 aiLoader.classList.remove('hidden');
-                // Use an empty API key, as it will be provided by the environment
-                const apiKey = ""; 
+                // *** API KEY UPDATED HERE ***
+                const apiKey = "AIzaSyCuyAFrMmIotaXpSXD2iWnJqeIU3T3dVxk"; 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
                 const payload = { contents: aiChatHistory, systemInstruction: { parts: [{ text: systemPrompt }] } };
                 
